@@ -13,7 +13,7 @@ jobs:
       - name: clang-format check
         working-directory: clients/cpp
         run: |
-          find include src tests -name '*.?pp' -o -name '*.hpp' | xargs clang-format --dry-run --Werror || true
+          find include src tests \( -name '*.cpp' -o -name '*.hpp' \) -print0 | xargs -0 clang-format --dry-run --Werror
       - name: configure
         working-directory: clients/cpp
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

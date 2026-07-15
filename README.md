@@ -132,12 +132,27 @@ make gpu-up                               # docker-compose with GPU profile
 | M4 Production behavior (queues, limits, backpressure, timeouts, cancel, breaker, health routing) | **Implemented & tested against mocks** |
 | M5 C++ client | **Compiles, links, and runs end-to-end** (clang++/libcurl) against the live mock stack; GoogleTest suite written, runs in CI |
 | M6 Observability (Prometheus metrics, tracing, JSON logs) | **Implemented**; Grafana dashboard provided |
-| M7 Performance study | Harness provided; **numbers UNVERIFIED — require GPU** |
+| M7 Performance study | **CPU/mock baseline measured**; GPU study remains unverified |
 | M8 Kubernetes + failure testing | Manifests + fault-injection scripts provided |
 
 See [docs/limitations.md](docs/limitations.md) for exactly what has and has not
-been verified. No benchmark numbers are published until they are measured on
-real hardware and recorded with a full environment record.
+been verified. No GPU-performance numbers are published without a measured run
+on compatible NVIDIA hardware and a complete environment record.
+
+## Measured local mock performance
+
+On an Apple M4 MacBook Air (10 cores, 16 GB RAM), commit `617ebe4` sustained
+**4,883.45 requests/second at 2.365 ms p95 latency** for 1,000 non-LLM requests
+through FusionServe at concurrency 8. The direct mock-Triton baseline sustained
+6,038.42 requests/second at 1.898 ms p95, making measured gateway overhead
+approximately **0.300 ms at p50** and **0.467 ms at p95**.
+
+The streaming mock-Dynamo run sustained **101.77 requests/second** and 915.91
+mock tokens/second with **30.11 ms p95 TTFT** across 128 requests at concurrency
+8. These are real CPU/mock-stack measurements that validate the gateway and
+benchmark harness; they are explicitly **not NVIDIA GPU inference results**.
+Commands, environment, full percentiles, and limitations are recorded in
+[docs/benchmark-results.md](docs/benchmark-results.md).
 
 ## Development
 

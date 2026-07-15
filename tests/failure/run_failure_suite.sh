@@ -33,8 +33,8 @@ wait_ready() {
 }
 
 echo "== building gateway =="
-cargo build --manifest-path gateway-rs/Cargo.toml --quiet || { echo "build failed"; exit 1; }
-BIN="$ROOT/gateway-rs/target/debug/fusionserve-gateway"
+cargo build -p fusionserve-gateway --quiet || { echo "build failed"; exit 1; }
+BIN="$ROOT/target/debug/fusionserve-gateway"
 
 echo "== starting mocks + gateway =="
 python3 tests/mocks/mock_triton.py --port "$TRITON_PORT" >/tmp/fl_triton.log 2>&1 & PIDS+=($!)

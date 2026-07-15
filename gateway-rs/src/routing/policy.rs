@@ -27,6 +27,13 @@ use tokio::sync::OwnedSemaphorePermit;
 pub struct Guards {
     _global: OwnedSemaphorePermit,
     _admission: crate::admission::AdmissionPermit,
+    inflight_metric: prometheus::IntGauge,
+}
+
+impl Drop for Guards {
+    fn drop(&mut self) {
+        self.inflight_metric.dec();
+    }
 }
 
 /// Run steps 1–4. On success the returned guards must be held for the duration
@@ -91,10 +98,16 @@ pub async fn admit(
         .with_label_values(labels)
         .observe(wait_start.elapsed().as_secs_f64());
     publish_gauges(state, route);
+    let inflight_metric = state
+        .metrics
+        .inflight_requests
+        .with_label_values(&[route.model.name.as_str(), route.backend.as_str()]);
+    inflight_metric.inc();
 
     Ok(Guards {
         _global: global,
         _admission: admission,
+        inflight_metric,
     })
 }
 
@@ -221,11 +234,6 @@ pub fn map_upstream_error(e: &UpstreamError, request_id: &str) -> GatewayError {
 }
 
 fn publish_gauges(state: &SharedState, route: &Route) {
-    state
-        .metrics
-        .inflight_requests
-        .with_label_values(&[route.model.name.as_str(), route.backend.as_str()])
-        .set(route.model.admission.inflight());
     state
         .metrics
         .queue_depth

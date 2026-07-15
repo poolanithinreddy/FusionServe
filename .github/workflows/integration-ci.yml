@@ -12,11 +12,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-        with: { workspaces: "gateway-rs" }
+        with: { workspaces: "." }
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - name: build gateway
-        run: cargo build --manifest-path gateway-rs/Cargo.toml
+        run: cargo build -p fusionserve-gateway
       - name: install pytest
         run: pip install pytest
       - name: end-to-end against mocks

@@ -13,25 +13,25 @@ help: ## Show this help
 # ---- Rust gateway ---------------------------------------------------------
 .PHONY: build
 build: ## Build the Rust gateway
-	cd $(GATEWAY) && cargo build
+	cargo build -p fusionserve-gateway
 
 .PHONY: run
 run: ## Run the gateway locally (expects mocks on :8001 and :8000)
-	cd $(GATEWAY) && cargo run
+	cargo run -p fusionserve-gateway -- --config gateway-rs/config.yaml
 
 .PHONY: test
 test: ## Run gateway unit + integration tests
-	cd $(GATEWAY) && cargo test
+	cargo test -p fusionserve-gateway
 
 .PHONY: lint
 lint: ## fmt check + clippy (deny warnings) + python lint
-	cd $(GATEWAY) && cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings
-	-ruff check clients/python tests benchmarks
-	-mypy clients/python/fusionserve
+	cargo fmt --all -- --check && cargo clippy -p fusionserve-gateway --all-targets --all-features -- -D warnings
+	ruff check clients/python tests benchmarks
+	mypy clients/python/fusionserve
 
 .PHONY: audit
 audit: ## Security audit of Rust deps (needs cargo-audit)
-	cd $(GATEWAY) && cargo audit
+	cargo audit
 
 # ---- Mock stack (no GPU) --------------------------------------------------
 .PHONY: mocks

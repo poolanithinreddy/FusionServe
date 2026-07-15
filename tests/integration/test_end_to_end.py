@@ -158,3 +158,10 @@ def test_chat_model_rejected_on_infer(stack):
     with pytest.raises(FusionServeError) as ei:
         c.infer("qwen_small", [])
     assert ei.value.code == "bad_request"
+
+
+def test_inflight_metrics_return_to_zero(stack):
+    with urllib.request.urlopen(f"{stack}/metrics", timeout=2) as response:
+        metrics = response.read().decode()
+    assert 'fusionserve_inflight_requests{backend="triton",model="resnet50"} 0' in metrics
+    assert 'fusionserve_inflight_requests{backend="dynamo",model="qwen_small"} 0' in metrics

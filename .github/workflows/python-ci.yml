@@ -15,6 +15,6 @@ jobs:
       - name: ruff
         run: ruff check clients/python tests benchmarks
       - name: mypy
-        run: mypy clients/python/fusionserve || true
+        run: mypy clients/python/fusionserve
       - name: unit tests
         run: pytest clients/python/tests -q
