@@ -34,6 +34,18 @@ pub struct AdmissionPermit {
     inflight: Arc<AtomicI64>,
 }
 
+/// Cancellation-safe waiting-room reservation. If the admission future is
+/// dropped while waiting, this guard still decrements queue depth.
+struct QueueSlot {
+    depth: Arc<AtomicI64>,
+}
+
+impl Drop for QueueSlot {
+    fn drop(&mut self) {
+        self.depth.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
 impl Drop for AdmissionPermit {
     fn drop(&mut self) {
         self.inflight.fetch_sub(1, Ordering::Relaxed);
@@ -72,31 +84,49 @@ impl Admission {
     /// Try to admit a request. On success returns a permit that must be held for
     /// the lifetime of the upstream call.
     pub async fn admit(&self) -> Result<AdmissionPermit, AdmitReject> {
+        // Requests that can run immediately never consume waiting-room space.
+        match self.concurrency.clone().try_acquire_owned() {
+            Ok(permit) => return Ok(self.track(permit)),
+            Err(tokio::sync::TryAcquireError::Closed) => return Err(AdmitReject::Closed),
+            Err(tokio::sync::TryAcquireError::NoPermits) => {}
+        }
+
         // Step 1: reserve a slot in the bounded waiting room.
         let depth = self.queue_depth.fetch_add(1, Ordering::AcqRel);
         if depth as usize >= self.max_queue {
             self.queue_depth.fetch_sub(1, Ordering::AcqRel);
             return Err(AdmitReject::QueueFull);
         }
+        let queue_slot = QueueSlot {
+            depth: self.queue_depth.clone(),
+        };
 
         // Step 2: wait for a concurrency permit, bounded by the queue timeout.
         let acquire = self.concurrency.clone().acquire_owned();
         let result = tokio::time::timeout(self.queue_timeout, acquire).await;
 
-        // Leaving the waiting room regardless of outcome.
-        self.queue_depth.fetch_sub(1, Ordering::AcqRel);
+        // Leaving the waiting room regardless of outcome. This is also handled
+        // if cancellation drops the future before this line.
+        drop(queue_slot);
 
         match result {
-            Ok(Ok(permit)) => {
-                self.inflight.fetch_add(1, Ordering::Relaxed);
-                Ok(AdmissionPermit {
-                    _permit: permit,
-                    inflight: self.inflight.clone(),
-                })
-            }
+            Ok(Ok(permit)) => Ok(self.track(permit)),
             Ok(Err(_closed)) => Err(AdmitReject::Closed),
             Err(_elapsed) => Err(AdmitReject::QueueTimeout),
         }
+    }
+
+    fn track(&self, permit: OwnedSemaphorePermit) -> AdmissionPermit {
+        self.inflight.fetch_add(1, Ordering::Relaxed);
+        AdmissionPermit {
+            _permit: permit,
+            inflight: self.inflight.clone(),
+        }
+    }
+
+    /// Reject new and queued work during graceful shutdown.
+    pub fn close(&self) {
+        self.concurrency.close();
     }
 }
 
@@ -146,5 +176,34 @@ mod tests {
         let r = a.admit().await;
         assert_eq!(r.err(), Some(AdmitReject::QueueTimeout));
         assert!(start.elapsed() >= Duration::from_millis(30));
+    }
+
+    #[tokio::test]
+    async fn cancellation_releases_waiting_room_slot() {
+        let a = Arc::new(Admission::new(1, 1, Duration::from_secs(30)));
+        let _held = a.admit().await.unwrap();
+        let waiter = {
+            let a = a.clone();
+            tokio::spawn(async move { a.admit().await })
+        };
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        assert_eq!(a.queue_depth(), 1);
+        waiter.abort();
+        let _ = waiter.await;
+        assert_eq!(a.queue_depth(), 0);
+    }
+
+    #[tokio::test]
+    async fn close_rejects_queued_and_future_requests() {
+        let a = Arc::new(Admission::new(1, 1, Duration::from_secs(30)));
+        let _held = a.admit().await.unwrap();
+        let waiter = {
+            let a = a.clone();
+            tokio::spawn(async move { a.admit().await })
+        };
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        a.close();
+        assert_eq!(waiter.await.unwrap().err(), Some(AdmitReject::Closed));
+        assert_eq!(a.admit().await.err(), Some(AdmitReject::Closed));
     }
 }
