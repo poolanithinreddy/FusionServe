@@ -46,18 +46,37 @@ async fn main() -> anyhow::Result<()> {
         unhealthy_after,
     );
 
-    let app = router(state);
+    let app = router(state.clone());
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
     tracing::info!(%bind_addr, "listening");
 
     // Graceful shutdown on Ctrl-C.
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal(state.registry.clone()))
         .await?;
     Ok(())
 }
 
-async fn shutdown_signal() {
+async fn shutdown_signal(registry: std::sync::Arc<fusionserve_gateway::routing::Registry>) {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        match signal(SignalKind::terminate()) {
+            Ok(mut terminate) => {
+                tokio::select! {
+                    _ = tokio::signal::ctrl_c() => {},
+                    _ = terminate.recv() => {},
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "failed to install SIGTERM handler; waiting for Ctrl-C");
+                let _ = tokio::signal::ctrl_c().await;
+            }
+        }
+    }
+    #[cfg(not(unix))]
     let _ = tokio::signal::ctrl_c().await;
-    tracing::info!("shutdown signal received");
+
+    registry.close_admission();
+    tracing::info!("shutdown signal received; admission closed");
 }

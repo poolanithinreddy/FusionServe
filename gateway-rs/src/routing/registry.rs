@@ -8,6 +8,7 @@
 use crate::admission::{Admission, CircuitBreaker};
 use crate::config::{Backend, Config, ModelConfig};
 use std::collections::HashMap;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -15,6 +16,8 @@ use std::sync::Arc;
 pub struct BackendHealth {
     pub backend: Backend,
     pub endpoint: String,
+    /// Stable opaque label for metrics; avoids exposing full endpoint URLs.
+    pub metric_id: String,
     healthy: AtomicBool,
     /// Consecutive failed health polls (used by the health router).
     consecutive_poll_failures: AtomicUsize,
@@ -24,9 +27,13 @@ pub struct BackendHealth {
 
 impl BackendHealth {
     fn new(backend: Backend, endpoint: String) -> Self {
+        let mut hasher = DefaultHasher::new();
+        endpoint.hash(&mut hasher);
+        let metric_id = format!("{}-{:016x}", backend.as_str(), hasher.finish());
         Self {
             backend,
             endpoint,
+            metric_id,
             // Optimistically healthy until the first poll says otherwise.
             healthy: AtomicBool::new(true),
             consecutive_poll_failures: AtomicUsize::new(0),
@@ -138,5 +145,27 @@ impl Registry {
     /// Look up a backend's health state by endpoint URL.
     pub fn backend(&self, endpoint: &str) -> Option<Arc<BackendHealth>> {
         self.backends.get(endpoint).cloned()
+    }
+
+    /// Stop accepting new work and wake queued requests during graceful shutdown.
+    pub fn close_admission(&self) {
+        for model in self.models.values() {
+            model.admission.close();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn metric_id_is_opaque_and_stable() {
+        let first = BackendHealth::new(Backend::Triton, "https://triton.internal:8000".into());
+        let second = BackendHealth::new(Backend::Triton, "https://triton.internal:8000".into());
+        assert_eq!(first.metric_id, second.metric_id);
+        assert!(first.metric_id.starts_with("triton-"));
+        assert!(!first.metric_id.contains("internal"));
+        assert!(!first.metric_id.contains("https"));
     }
 }

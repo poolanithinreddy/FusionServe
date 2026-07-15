@@ -91,7 +91,7 @@ impl Metrics {
                 "fusionserve_backend_health",
                 "Backend health (1=healthy,0=unhealthy)",
             ),
-            &["backend", "endpoint"],
+            &["backend", "backend_id"],
         )?;
         let llm_ttft_seconds = HistogramVec::new(
             HistogramOpts::new("fusionserve_llm_ttft_seconds", "LLM time to first token")

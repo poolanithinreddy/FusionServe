@@ -50,7 +50,7 @@ pub fn spawn(
 
                 metrics
                     .backend_health
-                    .with_label_values(&[backend.backend.as_str(), &backend.endpoint])
+                    .with_label_values(&[backend.backend.as_str(), &backend.metric_id])
                     .set(if backend.is_healthy() { 1 } else { 0 });
 
                 if !ok {

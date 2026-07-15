@@ -205,9 +205,21 @@ impl Config {
                     "model '{name}' has a zero concurrency, timeout, or request-size limit"
                 )));
             }
-            if !m.endpoint.starts_with("http://") && !m.endpoint.starts_with("https://") {
+            let endpoint = reqwest::Url::parse(&m.endpoint).map_err(|_| {
+                ConfigError::Invalid(format!("model '{name}' endpoint is not a valid URL"))
+            })?;
+            if !matches!(endpoint.scheme(), "http" | "https") {
                 return Err(ConfigError::Invalid(format!(
                     "model '{name}' endpoint must use http:// or https://"
+                )));
+            }
+            if !endpoint.username().is_empty()
+                || endpoint.password().is_some()
+                || endpoint.query().is_some()
+                || endpoint.fragment().is_some()
+            {
+                return Err(ConfigError::Invalid(format!(
+                    "model '{name}' endpoint must not contain credentials, a query, or a fragment"
                 )));
             }
             if m.protocol != Protocol::Http {
@@ -314,5 +326,19 @@ models:
             .unwrap_err()
             .to_string()
             .contains("more than one retry"));
+    }
+
+    #[test]
+    fn rejects_endpoint_credentials() {
+        let yaml = valid_yaml().replace(
+            "http://127.0.0.1:8001",
+            "https://user:secret@triton.example:8001",
+        );
+        let cfg: Config = serde_yaml::from_str(&yaml).unwrap();
+        assert!(cfg
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("credentials"));
     }
 }

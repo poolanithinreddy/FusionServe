@@ -53,7 +53,7 @@
       "title": "Backend health",
       "type": "stat",
       "gridPos": { "h": 6, "w": 8, "x": 0, "y": 16 },
-      "targets": [ { "expr": "fusionserve_backend_health", "legendFormat": "{{backend}} {{endpoint}}" } ]
+      "targets": [ { "expr": "fusionserve_backend_health", "legendFormat": "{{backend}} {{backend_id}}" } ]
     },
     {
       "id": 7,

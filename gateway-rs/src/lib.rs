@@ -119,15 +119,10 @@ pub fn build_state(config: config::Config) -> anyhow::Result<SharedState> {
                 .reset();
         }
     }
-    for endpoint in config
-        .models
-        .values()
-        .map(|m| (m.backend, m.endpoint.clone()))
-        .collect::<std::collections::HashSet<_>>()
-    {
+    for backend in registry.backends() {
         metrics
             .backend_health
-            .with_label_values(&[endpoint.0.as_str(), &endpoint.1])
+            .with_label_values(&[backend.backend.as_str(), &backend.metric_id])
             .set(1);
     }
 
