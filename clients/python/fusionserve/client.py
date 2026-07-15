@@ -64,7 +64,7 @@ class FusionServeClient:
         return json.loads(resp.read().decode())
 
     def infer(self, model: str, inputs: Any, request_id: Optional[str] = None) -> InferResult:
-        raw, rid = self._post(f"/v1/infer/{model}", {"inputs": inputs}, request_id)
+        raw, rid = self._post("/v1/infer", {"model": model, "inputs": inputs}, request_id)
         return InferResult(model=model, raw=raw, request_id=rid)
 
     def embed(self, model: str, text: str, request_id: Optional[str] = None) -> InferResult:

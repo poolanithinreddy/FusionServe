@@ -233,13 +233,13 @@ ImageResult FusionServeClient::classify(const std::string& model,
     // For the reference client we forward raw bytes as a JSON number array under
     // "inputs". A production client would send a proper KServe tensor.
     std::ostringstream os;
-    os << "{\"inputs\":[";
+    os << "{\"model\":\"" << detail::json_escape(model) << "\",\"inputs\":[";
     for (size_t i = 0; i < image.size(); ++i) {
         os << static_cast<int>(image[i]);
         if (i + 1 < image.size()) os << ",";
     }
     os << "]}";
-    auto resp = post("/v1/infer/" + model, os.str(), /*request_id=*/"");
+    auto resp = post("/v1/infer", os.str(), /*request_id=*/"");
     return ImageResult{model, resp.body, resp.request_id.empty()
                                              ? std::nullopt
                                              : std::optional<std::string>(resp.request_id)};

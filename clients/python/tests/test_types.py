@@ -4,6 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from fusionserve.client import FusionServeClient  # noqa: E402
 from fusionserve.types import ChatMessage, ChatRequest, FusionServeError  # noqa: E402
 
 
@@ -37,3 +38,21 @@ def test_error_str_includes_code_and_request_id():
     s = str(err)
     assert "circuit_open" in s
     assert "rid-1" in s
+
+
+def test_infer_uses_unified_api_and_includes_model():
+    client = FusionServeClient("http://example.invalid")
+    captured = {}
+
+    def fake_post(path, body, request_id):
+        captured.update(path=path, body=body, request_id=request_id)
+        return {"outputs": []}, "rid-2"
+
+    client._post = fake_post
+    result = client.infer("resnet50", [1, 2, 3], request_id="rid-2")
+    assert captured == {
+        "path": "/v1/infer",
+        "body": {"model": "resnet50", "inputs": [1, 2, 3]},
+        "request_id": "rid-2",
+    }
+    assert result.request_id == "rid-2"
