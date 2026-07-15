@@ -1,4 +1,5 @@
 # Rust
+/target/
 /gateway-rs/target/
 **/*.rs.bk
 

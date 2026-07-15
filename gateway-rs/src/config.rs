@@ -165,14 +165,71 @@ impl Config {
         Ok(cfg)
     }
 
-    fn validate(&self) -> Result<(), ConfigError> {
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        self.server
+            .bind_addr
+            .parse::<std::net::SocketAddr>()
+            .map_err(|_| {
+                ConfigError::Invalid(format!(
+                    "server.bind_addr '{}' is not a valid socket address",
+                    self.server.bind_addr
+                ))
+            })?;
+        if self.server.global_max_inflight == 0 {
+            return Err(ConfigError::Invalid(
+                "server.global_max_inflight must be greater than zero".into(),
+            ));
+        }
+        if self.server.default_deadline_ms == 0
+            || self.admission.queue_capacity == 0
+            || self.admission.queue_timeout_ms == 0
+            || self.admission.circuit_breaker.failure_threshold == 0
+            || self.admission.circuit_breaker.open_cooldown_ms == 0
+            || self.admission.circuit_breaker.half_open_success_threshold == 0
+            || self.health.poll_interval_ms == 0
+            || self.health.unhealthy_after == 0
+        {
+            return Err(ConfigError::Invalid(
+                "deadlines, capacities, breaker thresholds, and health intervals must be greater than zero".into(),
+            ));
+        }
         if self.models.is_empty() {
             return Err(ConfigError::Invalid("no models configured".into()));
         }
         for (name, m) in &self.models {
-            if m.max_concurrency == 0 {
+            if name.trim().is_empty() {
+                return Err(ConfigError::Invalid("model names cannot be empty".into()));
+            }
+            if m.max_concurrency == 0 || m.timeout_ms == 0 || m.max_request_bytes == 0 {
                 return Err(ConfigError::Invalid(format!(
-                    "model '{name}' has max_concurrency = 0"
+                    "model '{name}' has a zero concurrency, timeout, or request-size limit"
+                )));
+            }
+            if !m.endpoint.starts_with("http://") && !m.endpoint.starts_with("https://") {
+                return Err(ConfigError::Invalid(format!(
+                    "model '{name}' endpoint must use http:// or https://"
+                )));
+            }
+            if m.protocol != Protocol::Http {
+                return Err(ConfigError::Invalid(format!(
+                    "model '{name}' selects unsupported protocol '{}'; this release supports HTTP",
+                    m.protocol.as_str()
+                )));
+            }
+            if m.retry.max_retries > 1 {
+                return Err(ConfigError::Invalid(format!(
+                    "model '{name}' configures more than one retry"
+                )));
+            }
+            let compatible = matches!(
+                (m.backend, m.workload),
+                (Backend::Triton, Workload::ImageClassification)
+                    | (Backend::Triton, Workload::Embedding)
+                    | (Backend::Dynamo, Workload::ChatCompletion)
+            );
+            if !compatible {
+                return Err(ConfigError::Invalid(format!(
+                    "model '{name}' has an incompatible backend/workload pair"
                 )));
             }
             // Chat is the only streaming-capable workload we support today.
@@ -191,5 +248,71 @@ impl Config {
 
     pub fn default_deadline(&self) -> Duration {
         Duration::from_millis(self.server.default_deadline_ms)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_yaml() -> &'static str {
+        r#"
+server: { bind_addr: "127.0.0.1:8080", global_max_inflight: 32, default_deadline_ms: 5000 }
+admission:
+  queue_capacity: 8
+  queue_timeout_ms: 100
+  circuit_breaker: { failure_threshold: 3, open_cooldown_ms: 1000, half_open_success_threshold: 1 }
+health: { poll_interval_ms: 1000, unhealthy_after: 2 }
+models:
+  resnet50:
+    workload: image_classification
+    backend: triton
+    protocol: http
+    endpoint: "http://127.0.0.1:8001"
+    timeout_ms: 1000
+    max_concurrency: 4
+"#
+    }
+
+    #[test]
+    fn accepts_valid_config() {
+        let cfg: Config = serde_yaml::from_str(valid_yaml()).unwrap();
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_unsupported_transport() {
+        let yaml = valid_yaml().replace("protocol: http", "protocol: grpc");
+        let cfg: Config = serde_yaml::from_str(&yaml).unwrap();
+        assert!(cfg
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("unsupported protocol"));
+    }
+
+    #[test]
+    fn rejects_incompatible_backend_and_workload() {
+        let yaml = valid_yaml().replace("backend: triton", "backend: dynamo");
+        let cfg: Config = serde_yaml::from_str(&yaml).unwrap();
+        assert!(cfg
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("incompatible"));
+    }
+
+    #[test]
+    fn rejects_unbounded_retry_configuration() {
+        let yaml = valid_yaml().replace(
+            "max_concurrency: 4",
+            "max_concurrency: 4\n    retry: { max_retries: 2 }",
+        );
+        let cfg: Config = serde_yaml::from_str(&yaml).unwrap();
+        assert!(cfg
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("more than one retry"));
     }
 }
