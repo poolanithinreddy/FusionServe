@@ -83,9 +83,9 @@ class Handler(BaseHTTPRequestHandler):
         if req.get("stream"):
             self._stream(model)
         else:
-            self._unary(model)
+            self._unary(model, self.headers.get("x-request-id"))
 
-    def _unary(self, model):
+    def _unary(self, model, request_id):
         text = "".join(TOKENS)
         self._json(
             200,
@@ -93,6 +93,7 @@ class Handler(BaseHTTPRequestHandler):
                 "id": "chatcmpl-mock",
                 "object": "chat.completion",
                 "model": model,
+                "received_request_id": request_id,
                 "choices": [
                     {
                         "index": 0,
@@ -139,6 +140,7 @@ def main():
     ap.add_argument("--host", default="0.0.0.0")
     args = ap.parse_args()
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
+    srv.daemon_threads = True
     print(f"mock-dynamo listening on {args.host}:{args.port}", flush=True)
     try:
         srv.serve_forever()

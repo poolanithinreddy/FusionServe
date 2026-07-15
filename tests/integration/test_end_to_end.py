@@ -48,11 +48,11 @@ def stack():
 
     # Build the gateway (fast if already built).
     subprocess.run(
-        ["cargo", "build", "--quiet"],
-        cwd=ROOT / "gateway-rs",
+        ["cargo", "build", "--quiet", "--offline", "-p", "fusionserve-gateway"],
+        cwd=ROOT,
         check=True,
     )
-    binary = ROOT / "gateway-rs" / "target" / "debug" / "fusionserve-gateway"
+    binary = ROOT / "target" / "debug" / "fusionserve-gateway"
 
     # Write a config pointing at our test ports.
     cfg = ROOT / "tests" / "integration" / "_e2e_config.yaml"
@@ -97,18 +97,18 @@ models:
     env = dict(os.environ, FUSIONSERVE_CONFIG=str(cfg), RUST_LOG="warn")
     procs.append(subprocess.Popen([str(binary)], env=env))
 
-    assert _wait_http(f"http://127.0.0.1:{GATEWAY_PORT}/readyz"), "gateway did not become ready"
-
-    yield f"http://127.0.0.1:{GATEWAY_PORT}"
-
-    for p in procs:
-        p.terminate()
-    for p in procs:
-        try:
-            p.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            p.kill()
-    cfg.unlink(missing_ok=True)
+    try:
+        assert _wait_http(f"http://127.0.0.1:{GATEWAY_PORT}/readyz"), "gateway did not become ready"
+        yield f"http://127.0.0.1:{GATEWAY_PORT}"
+    finally:
+        for p in procs:
+            p.terminate()
+        for p in procs:
+            try:
+                p.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                p.kill()
+        cfg.unlink(missing_ok=True)
 
 
 def test_health_and_models(stack):
@@ -121,15 +121,20 @@ def test_health_and_models(stack):
 
 def test_infer_routes_to_triton(stack):
     c = FusionServeClient(stack)
-    res = c.infer("resnet50", [{"name": "x", "datatype": "FP32", "shape": [1, 3], "data": [0.1, 0.2, 0.3]}])
+    res = c.infer("resnet50", [{"name": "x", "datatype": "FP32", "shape": [1, 3], "data": [0.1, 0.2, 0.3]}], request_id="e2e-triton-1")
     assert res.raw["model_name"] == "resnet50"
-    assert res.request_id  # echoed back
+    assert res.request_id == "e2e-triton-1"
+    assert res.raw["received_request_id"] == "e2e-triton-1"
 
 
 def test_chat_unary(stack):
     c = FusionServeClient(stack)
-    res = c.chat(ChatRequest(model="qwen_small", messages=[ChatMessage("user", "hi")]))
+    res = c.chat(
+        ChatRequest(model="qwen_small", messages=[ChatMessage("user", "hi")]),
+        request_id="e2e-dynamo-1",
+    )
     assert "mock Dynamo" in res.content
+    assert res.raw["received_request_id"] == "e2e-dynamo-1"
 
 
 def test_chat_streaming(stack):

@@ -90,6 +90,7 @@ class Handler(BaseHTTPRequestHandler):
         response = {
             "model_name": model,
             "model_version": "1",
+            "received_request_id": self.headers.get("x-request-id"),
             "outputs": [
                 {
                     "name": "top5",
@@ -114,6 +115,7 @@ def main():
     ap.add_argument("--host", default="0.0.0.0")
     args = ap.parse_args()
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
+    srv.daemon_threads = True
     print(f"mock-triton listening on {args.host}:{args.port}", flush=True)
     try:
         srv.serve_forever()
