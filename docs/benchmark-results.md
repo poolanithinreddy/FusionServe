@@ -33,9 +33,11 @@ python3 benchmarks/gateway/run_gateway_overhead.py \
 | FusionServe -> mock Triton | 1000 / 0 | 4,883.45 req/s | 1.470 ms | 2.365 ms | 2.841 ms | 1.563 ms |
 | Direct mock Triton | 1000 / 0 | 6,038.42 req/s | 1.170 ms | 1.898 ms | 2.407 ms | 1.229 ms |
 
-Observed gateway overhead was 0.300 ms at p50, 0.467 ms at p95, and 0.434 ms
-at p99. This subtraction is useful for local regression tracking; it is not a
-claim about overhead with real Triton inference.
+These are independent samples, so their percentile differences are not
+overhead percentiles. The previously published p50/p95/p99 subtraction has
+been withdrawn because it produced a non-monotonic sequence and was not a
+statistically valid distribution. The side-by-side measurements remain the
+unaltered observations available from the legacy run.
 
 ### Streaming LLM gateway path
 
@@ -47,7 +49,7 @@ python3 benchmarks/llm/run_llm_bench.py \
   --requests 128 --concurrency 8 --warmup 8
 ```
 
-| Success/error | Requests/s | Mock tokens/s | TTFT p50/p95/p99 | E2E p50/p95/p99 |
+| Success/error | Requests/s | Mock SSE events/s | TTFT p50/p95/p99 | E2E p50/p95/p99 |
 |---:|---:|---:|---:|---:|
 | 128 / 0 | 101.77 | 915.91 | 27.56 / 30.11 / 31.27 ms | 77.29 / 80.37 / 82.04 ms |
 

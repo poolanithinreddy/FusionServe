@@ -8,9 +8,9 @@ Triton, Dynamo, vLLM, model, precision, and input/output distribution. Mock
 numbers validate the gateway and harness only; they are never evidence of GPU
 inference performance.
 
-Benchmarks turn this from an integration demo into a systems study. **No numbers
-are published until measured on real hardware with a full environment record.**
-The mock stack is only for validating that the harness runs.
+GPU performance numbers are published only when measured on real hardware with
+a full environment record. CPU/mock observations may be retained as harness and
+gateway regression evidence when they are unmistakably labeled as mock.
 
 ## Environment record (required in every report)
 
@@ -63,17 +63,31 @@ size, queue delay, error rate.
 Record: req/s, tokens/s, TTFT, inter-token latency, e2e latency, p95/p99, GPU
 memory/util, error rate.
 
-## Gateway overhead
+## Gateway comparison and overhead
 
 Run each driver twice — once at the gateway, once directly at the backend — and
-report:
+report the two latency distributions side by side. Do not subtract independently
+sampled percentiles: `p99(gateway) - p99(direct)` is not the p99 of an overhead
+distribution and may even produce a non-monotonic result.
+
+An actual overhead distribution requires paired observations under controlled
+conditions. For pair `i`, calculate:
 
 ```
-gateway_overhead_ms = p50(via_gateway) - p50(direct_backend)
+added_latency_i = gateway_latency_i - direct_backend_latency_i
 ```
 
-The goal is *predictable* overhead traded for reliability + observability, not
-zero overhead.
+Then compute percentiles from the `added_latency_i` sample. Record the pairing
+strategy, alternate request order to reduce drift, use identical inputs, and
+retain every raw pair. If paired data is unavailable, make no tail-overhead
+claim; report only the independent distributions and throughput difference.
+
+Every publishable distribution must satisfy
+`p50 <= p90 <= p95 <= p99 <= max`. Validate result documents before publication:
+
+```bash
+python3 benchmarks/validate_results.py artifacts/benchmarks/mock
+```
 
 ## Producing a report
 

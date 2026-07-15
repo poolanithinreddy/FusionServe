@@ -1,16 +1,28 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "benchmark_version": "fusionserve-bench-v2",
+  "run_id": "mock-streaming-c8-20260715-r1",
   "date": "2026-07-15",
-  "environment": "Apple M4, 10 cores, 16 GB RAM, macOS arm64, CPU/mock only",
-  "commit": "617ebe4",
+  "git_commit": "617ebe4",
+  "backend_type": "mock",
+  "hardware_type": "cpu",
+  "environment": {
+    "os": "macOS 26.5.1 arm64",
+    "cpu": "Apple M4, 10 cores",
+    "memory_bytes": 17179869184,
+    "gpu_count": 0
+  },
   "requests": 128,
   "warmup_requests": 8,
+  "repetitions": 1,
+  "units": {"latency": "ms", "throughput": "requests/second"},
   "concurrency": 8,
   "successes": 128,
   "errors": 0,
+  "error_rate": 0.0,
   "throughput_rps": 101.77,
-  "mock_tokens_per_second": 915.91,
+  "mock_sse_events_per_second": 915.91,
   "ttft_ms": {"p50": 27.56, "p95": 30.11, "p99": 31.27},
   "e2e_ms": {"p50": 77.29, "p95": 80.37, "p99": 82.04},
-  "scope": "Mock Dynamo validates SSE forwarding and timing only; no vLLM or GPU execution."
+  "scope": "Mock Dynamo validates SSE forwarding and timing only; event counts are not model tokens."
 }

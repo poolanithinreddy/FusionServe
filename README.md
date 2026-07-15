@@ -156,11 +156,12 @@ on compatible NVIDIA hardware and a complete environment record.
 On an Apple M4 MacBook Air (10 cores, 16 GB RAM), commit `617ebe4` sustained
 **4,883.45 requests/second at 2.365 ms p95 latency** for 1,000 non-LLM requests
 through FusionServe at concurrency 8. The direct mock-Triton baseline sustained
-6,038.42 requests/second at 1.898 ms p95, making measured gateway overhead
-approximately **0.300 ms at p50** and **0.467 ms at p95**.
+6,038.42 requests/second at 1.898 ms p95. These independently sampled
+distributions are reported side by side; their percentiles are not subtracted
+or presented as an overhead distribution.
 
 The streaming mock-Dynamo run sustained **101.77 requests/second** and 915.91
-mock tokens/second with **30.11 ms p95 TTFT** across 128 requests at concurrency
+mock SSE events/second with **30.11 ms p95 TTFT** across 128 requests at concurrency
 8. These are real CPU/mock-stack measurements that validate the gateway and
 benchmark harness; they are explicitly **not NVIDIA GPU inference results**.
 Commands, environment, full percentiles, and limitations are recorded in

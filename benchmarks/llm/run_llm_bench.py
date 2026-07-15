@@ -106,17 +106,21 @@ def main():
         "concurrency": args.concurrency,
         "errors": errors,
         "throughput_rps": round(len(results) / wall, 2) if wall > 0 else 0.0,
-        "tokens_per_sec": round(total_tokens / wall, 2) if wall > 0 else 0.0,
+        "sse_events_per_sec": round(total_tokens / wall, 2) if wall > 0 else 0.0,
         "successes": len(results),
         "ttft_ms": {
             "p50": round(pct(ttfts, 50), 2),
+            "p90": round(pct(ttfts, 90), 2),
             "p95": round(pct(ttfts, 95), 2),
             "p99": round(pct(ttfts, 99), 2),
+            "max": round(max(ttfts), 2) if ttfts else 0.0,
         },
         "e2e_ms": {
             "p50": round(pct(e2es, 50), 2),
+            "p90": round(pct(e2es, 90), 2),
             "p95": round(pct(e2es, 95), 2),
             "p99": round(pct(e2es, 99), 2),
+            "max": round(max(e2es), 2) if e2es else 0.0,
         },
         "note": "MOCK harness validation unless run against the GPU stack.",
     }

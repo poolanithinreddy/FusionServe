@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Measure gateway overhead and basic latency/throughput.
+"""Measure one request path's latency and throughput distribution.
 
 Sends a fixed number of requests at a chosen concurrency and reports throughput
 and latency percentiles. Compare `--target` pointed at the gateway vs. pointed
-directly at a backend to compute gateway overhead:
-
-    gateway_overhead_ms = p50(via_gateway) - p50(direct_backend)
+directly at a backend. Independent percentile distributions must be reported
+side by side; subtracting their percentiles does not produce an overhead
+distribution. Use paired per-request observations for that claim.
 
 Against the mock backends this is a smoke test, NOT a publishable benchmark —
 real numbers require the GPU stack and a recorded environment (see
@@ -98,8 +98,10 @@ def main():
         "throughput_rps": round(len(latencies) / wall, 2) if wall > 0 else 0.0,
         "latency_ms": {
             "p50": round(percentile(latencies, 50), 3),
+            "p90": round(percentile(latencies, 90), 3),
             "p95": round(percentile(latencies, 95), 3),
             "p99": round(percentile(latencies, 99), 3),
+            "max": round(max(latencies), 3) if latencies else 0.0,
             "mean": round(statistics.fmean(latencies), 3) if latencies else 0.0,
         },
         "note": "MOCK smoke test unless run against the GPU stack with a recorded environment.",

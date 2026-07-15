@@ -1,23 +1,38 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "benchmark_version": "fusionserve-bench-v2",
+  "run_id": "mock-inference-c8-20260715-r1",
   "date": "2026-07-15",
-  "environment": "Apple M4, 10 cores, 16 GB RAM, macOS arm64, CPU/mock only",
-  "commit": "617ebe4",
-  "requests": 1000,
+  "git_commit": "617ebe4",
+  "backend_type": "mock",
+  "hardware_type": "cpu",
+  "environment": {
+    "os": "macOS 26.5.1 arm64",
+    "cpu": "Apple M4, 10 cores",
+    "memory_bytes": 17179869184,
+    "gpu_count": 0
+  },
   "warmup_requests": 50,
-  "concurrency": 8,
+  "repetitions": 1,
+  "units": {"latency": "ms", "throughput": "requests/second"},
   "fusionserve": {
+    "requests": 1000,
     "successes": 1000,
     "errors": 0,
+    "error_rate": 0.0,
+    "concurrency": 8,
     "throughput_rps": 4883.45,
     "latency_ms": {"p50": 1.470, "p95": 2.365, "p99": 2.841, "mean": 1.563}
   },
   "direct_mock_triton": {
+    "requests": 1000,
     "successes": 1000,
     "errors": 0,
+    "error_rate": 0.0,
+    "concurrency": 8,
     "throughput_rps": 6038.42,
     "latency_ms": {"p50": 1.170, "p95": 1.898, "p99": 2.407, "mean": 1.229}
   },
-  "gateway_overhead_ms": {"p50": 0.300, "p95": 0.467, "p99": 0.434},
-  "scope": "Mock Triton validates gateway overhead only; no model or GPU execution."
+  "comparison_method": "Independent latency distributions reported side by side; percentile subtraction is prohibited.",
+  "scope": "Mock Triton validates the gateway path only; no model or GPU execution."
 }
