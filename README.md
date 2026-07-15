@@ -124,6 +124,10 @@ make gpu-up                               # docker-compose with GPU profile
 
 ## Implementation status
 
+Verification labels used below are literal: “mock-tested” means the real Rust
+gateway ran against deterministic mock services; it does not imply NVIDIA
+component or GPU execution.
+
 | Milestone | Status |
 |-----------|--------|
 | M1 Triton baseline (configs + mock + client) | Scaffolded (real GPU run: UNVERIFIED — needs hardware) |
@@ -134,6 +138,14 @@ make gpu-up                               # docker-compose with GPU profile
 | M6 Observability (Prometheus metrics, tracing, JSON logs) | **Implemented**; Grafana dashboard provided |
 | M7 Performance study | **CPU/mock baseline measured**; GPU study remains unverified |
 | M8 Kubernetes + failure testing | Manifests + fault-injection scripts provided |
+
+| Validation class | Status |
+|---|---|
+| CPU/mock gateway | **Verified** |
+| Real NVIDIA Triton | **NOT RUN** — no NVIDIA GPU; Docker daemon unavailable |
+| Real Dynamo + vLLM | **NOT RUN** — no NVIDIA GPU; Docker daemon unavailable |
+| Single-GPU | **NOT RUN** |
+| Multi-GPU / multi-worker | **NOT RUN** |
 
 See [docs/limitations.md](docs/limitations.md) for exactly what has and has not
 been verified. No GPU-performance numbers are published without a measured run
@@ -153,6 +165,26 @@ mock tokens/second with **30.11 ms p95 TTFT** across 128 requests at concurrency
 benchmark harness; they are explicitly **not NVIDIA GPU inference results**.
 Commands, environment, full percentiles, and limitations are recorded in
 [docs/benchmark-results.md](docs/benchmark-results.md).
+
+## Real NVIDIA validation workflows
+
+The repository includes version-pinned workflows even though this machine could
+not execute them:
+
+```bash
+# NVIDIA Triton 26.04 + checksum-verified ResNet-50 ONNX
+scripts/triton/download_resnet50.sh
+scripts/triton/start.sh
+scripts/triton/smoke_direct.sh
+
+# NVIDIA Dynamo vLLM runtime 1.2.0 + Qwen3-0.6B
+scripts/dynamo/start.sh
+scripts/dynamo/smoke_direct.sh
+```
+
+See [Triton integration](docs/triton-integration.md),
+[Dynamo/vLLM integration](docs/dynamo-integration.md), and the
+[validation report](docs/validation-report.md) before running these workflows.
 
 ## Development
 

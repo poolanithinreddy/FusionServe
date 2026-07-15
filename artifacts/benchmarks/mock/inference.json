@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-15",
+  "environment": "Apple M4, 10 cores, 16 GB RAM, macOS arm64, CPU/mock only",
+  "commit": "617ebe4",
+  "requests": 1000,
+  "warmup_requests": 50,
+  "concurrency": 8,
+  "fusionserve": {
+    "successes": 1000,
+    "errors": 0,
+    "throughput_rps": 4883.45,
+    "latency_ms": {"p50": 1.470, "p95": 2.365, "p99": 2.841, "mean": 1.563}
+  },
+  "direct_mock_triton": {
+    "successes": 1000,
+    "errors": 0,
+    "throughput_rps": 6038.42,
+    "latency_ms": {"p50": 1.170, "p95": 1.898, "p99": 2.407, "mean": 1.229}
+  },
+  "gateway_overhead_ms": {"p50": 0.300, "p95": 0.467, "p99": 0.434},
+  "scope": "Mock Triton validates gateway overhead only; no model or GPU execution."
+}

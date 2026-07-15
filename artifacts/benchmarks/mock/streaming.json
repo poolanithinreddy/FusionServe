@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-15",
+  "environment": "Apple M4, 10 cores, 16 GB RAM, macOS arm64, CPU/mock only",
+  "commit": "617ebe4",
+  "requests": 128,
+  "warmup_requests": 8,
+  "concurrency": 8,
+  "successes": 128,
+  "errors": 0,
+  "throughput_rps": 101.77,
+  "mock_tokens_per_second": 915.91,
+  "ttft_ms": {"p50": 27.56, "p95": 30.11, "p99": 31.27},
+  "e2e_ms": {"p50": 77.29, "p95": 80.37, "p99": 82.04},
+  "scope": "Mock Dynamo validates SSE forwarding and timing only; no vLLM or GPU execution."
+}
