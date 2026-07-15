@@ -13,8 +13,10 @@ jobs:
       - name: install
         run: pip install ruff mypy pytest
       - name: ruff
-        run: ruff check clients/python tests benchmarks
+        run: |
+          ruff check clients/python tests benchmarks scripts
+          ruff format --check clients/python tests benchmarks scripts
       - name: mypy
         run: mypy clients/python/fusionserve
       - name: unit tests
-        run: pytest clients/python/tests -q
+        run: pytest clients/python/tests tests/integration/test_benchmark_result_validation.py tests/integration/test_markdown_links.py -q

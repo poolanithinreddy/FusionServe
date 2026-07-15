@@ -26,8 +26,11 @@ test: ## Run gateway unit + integration tests
 .PHONY: lint
 lint: ## fmt check + clippy (deny warnings) + python lint
 	cargo fmt --all -- --check && cargo clippy -p fusionserve-gateway --all-targets --all-features -- -D warnings
-	ruff check clients/python tests benchmarks
+	ruff check clients/python tests benchmarks scripts
+	ruff format --check clients/python tests benchmarks scripts
 	mypy clients/python/fusionserve
+	python3 benchmarks/validate_results.py artifacts/benchmarks/mock
+	python3 scripts/check_markdown_links.py .
 
 .PHONY: audit
 audit: ## Security audit of Rust deps (needs cargo-audit)

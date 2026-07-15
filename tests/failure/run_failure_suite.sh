@@ -9,7 +9,7 @@
 # Prints PASS/FAIL per scenario and exits non-zero if any scenario fails.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "$ROOT"
+cd "$ROOT" || exit 1
 
 TRITON_PORT=18701
 DYNAMO_PORT=18700
@@ -18,6 +18,8 @@ CFG="tests/failure/failure_config.yaml"
 FAILED=0
 PIDS=()
 
+# Called indirectly by the EXIT/INT/TERM trap below.
+# shellcheck disable=SC2329
 cleanup() {
   for p in "${PIDS[@]:-}"; do kill "$p" 2>/dev/null; done
   wait 2>/dev/null

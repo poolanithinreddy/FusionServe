@@ -25,3 +25,7 @@ jobs:
         run: bash tests/failure/run_failure_suite.sh
       - name: docker-compose config validation
         run: docker compose --profile mock config >/dev/null
+      - name: benchmark result integrity
+        run: python3 benchmarks/validate_results.py artifacts/benchmarks/mock
+      - name: documentation link integrity
+        run: python3 scripts/check_markdown_links.py .
