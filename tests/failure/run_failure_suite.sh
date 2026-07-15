@@ -97,6 +97,20 @@ else
   echo "FAIL: request exceeded expected bound"; FAILED=1
 fi
 
+# --- Scenario 4: Dynamo unavailable; Triton remains functional -------------
+echo; echo "== Scenario 4: Dynamo unavailable =="
+kill "${PIDS[1]}" 2>/dev/null; sleep 0.3
+chat=$(curl -s -o /dev/null -w "%{http_code}" -m 3 -X POST "$GW/v1/chat/completions" \
+        -H 'content-type: application/json' -d '{"model":"qwen_small","messages":[{"role":"user","content":"hi"}]}')
+infer=$(curl -s -o /dev/null -w "%{http_code}" -m 3 -X POST "$GW/v1/infer/resnet50" \
+        -H 'content-type: application/json' -d '{"inputs":[1,2,3]}')
+echo "chat code=$chat infer code=$infer"
+if [[ "$chat" == "503" && "$infer" == "200" ]]; then
+  echo "PASS: LLM fails fast while non-LLM remains healthy"
+else
+  echo "FAIL: expected chat=503 and infer=200"; FAILED=1
+fi
+
 echo
 if (( FAILED == 0 )); then
   echo "ALL FAILURE SCENARIOS PASSED"

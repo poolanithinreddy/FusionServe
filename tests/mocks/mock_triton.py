@@ -89,7 +89,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(forced_status, {"error": "forced mock status"})
             return
 
-        if os.environ.get("MOCK_MALFORMED") == "1":
+        if os.environ.get("MOCK_MALFORMED") == "1" or request_body.get("mock_malformed"):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()

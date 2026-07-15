@@ -200,3 +200,50 @@ def test_stream_disconnect_increments_cancellation_metric(stack):
         metrics = metrics_response.read().decode()
     assert "fusionserve_request_cancellations_total" in metrics
     assert 'backend="dynamo",model="qwen_small",workload="chat_completion"} 1' in metrics
+
+
+def _raw_infer(stack, extra=None):
+    payload = {"model": "resnet50", "inputs": [1]}
+    payload.update(extra or {})
+    req = urllib.request.Request(
+        f"{stack}/v1/infer",
+        data=json.dumps(payload).encode(),
+        headers={"content-type": "application/json"},
+        method="POST",
+    )
+    return urllib.request.urlopen(req, timeout=2)
+
+
+def test_malformed_backend_response_returns_502(stack):
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        _raw_infer(stack, {"mock_malformed": True})
+    assert exc.value.code == 502
+    assert json.loads(exc.value.read())["error"]["code"] == "upstream_malformed"
+
+
+def test_circuit_opens_then_recovers_half_open(stack):
+    for _ in range(3):
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            _raw_infer(stack, {"mock_status": 503})
+        assert exc.value.code == 503
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        _raw_infer(stack)
+    assert json.loads(exc.value.read())["error"]["code"] == "circuit_open"
+    time.sleep(0.6)
+    with _raw_infer(stack) as response:
+        assert response.status == 200
+
+
+def test_admin_disable_and_enable_recovers_backend(stack):
+    endpoint = "http%3A%2F%2F127.0.0.1%3A18601"
+    urllib.request.urlopen(
+        urllib.request.Request(f"{stack}/admin/backends/{endpoint}/disable", data=b"", method="POST")
+    ).close()
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        _raw_infer(stack)
+    assert exc.value.code == 503
+    urllib.request.urlopen(
+        urllib.request.Request(f"{stack}/admin/backends/{endpoint}/enable", data=b"", method="POST")
+    ).close()
+    with _raw_infer(stack) as response:
+        assert response.status == 200
