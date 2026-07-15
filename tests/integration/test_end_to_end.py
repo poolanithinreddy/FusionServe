@@ -8,12 +8,14 @@ without needing a GPU.
 Run:  pytest tests/integration/test_end_to_end.py -q
 Skips automatically if cargo is unavailable.
 """
+import json
 import os
 import shutil
 import subprocess
 import sys
 import time
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -165,3 +167,36 @@ def test_inflight_metrics_return_to_zero(stack):
         metrics = response.read().decode()
     assert 'fusionserve_inflight_requests{backend="triton",model="resnet50"} 0' in metrics
     assert 'fusionserve_inflight_requests{backend="dynamo",model="qwen_small"} 0' in metrics
+
+
+def test_downstream_deadline_returns_504(stack):
+    body = b'{"model":"resnet50","inputs":[1],"mock_delay_ms":200}'
+    req = urllib.request.Request(
+        f"{stack}/v1/infer",
+        data=body,
+        headers={"content-type": "application/json", "x-deadline-ms": "25"},
+        method="POST",
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(req, timeout=2)
+    assert exc.value.code == 504
+    payload = json.loads(exc.value.read())
+    assert payload["error"]["code"] == "deadline_exceeded"
+
+
+def test_stream_disconnect_increments_cancellation_metric(stack):
+    body = b'{"model":"qwen_small","stream":true,"messages":[{"role":"user","content":"hi"}]}'
+    req = urllib.request.Request(
+        f"{stack}/v1/chat/completions",
+        data=body,
+        headers={"content-type": "application/json"},
+        method="POST",
+    )
+    response = urllib.request.urlopen(req, timeout=2)
+    assert response.readline().startswith(b"data:")
+    response.close()
+    time.sleep(0.1)
+    with urllib.request.urlopen(f"{stack}/metrics", timeout=2) as metrics_response:
+        metrics = metrics_response.read().decode()
+    assert "fusionserve_request_cancellations_total" in metrics
+    assert 'backend="dynamo",model="qwen_small",workload="chat_completion"} 1' in metrics

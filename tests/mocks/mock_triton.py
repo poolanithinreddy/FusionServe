@@ -67,16 +67,26 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         length = int(self.headers.get("Content-Length", 0))
-        _ = self.rfile.read(length)  # consume body; content is not needed for the mock
+        raw = self.rfile.read(length)
+        try:
+            request_body = json.loads(raw or b"{}")
+        except json.JSONDecodeError:
+            self._json(400, {"error": "invalid json"})
+            return
         model = self.path.split("/v2/models/")[1].split("/")[0]
 
-        latency = env_float("MOCK_LATENCY_MS", 0.0) / 1000.0
+        latency = float(request_body.get("mock_delay_ms", env_float("MOCK_LATENCY_MS", 0.0))) / 1000.0
         if latency > 0:
             time.sleep(latency)
 
         fail_rate = env_float("MOCK_FAIL_RATE", 0.0)
         if fail_rate > 0 and random.random() < fail_rate:
             self._json(503, {"error": "mock backend overloaded"})
+            return
+
+        forced_status = int(request_body.get("mock_status", 0))
+        if forced_status:
+            self._json(forced_status, {"error": "forced mock status"})
             return
 
         if os.environ.get("MOCK_MALFORMED") == "1":

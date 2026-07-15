@@ -22,8 +22,24 @@ use axum::http::{header, HeaderMap};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use futures::StreamExt;
+use prometheus::IntCounter;
 use serde_json::Value;
 use std::time::Instant;
+
+struct StreamLifecycle {
+    _guards: policy::Guards,
+    cancellation_counter: IntCounter,
+    completed: bool,
+}
+
+impl Drop for StreamLifecycle {
+    fn drop(&mut self) {
+        if !self.completed {
+            self.cancellation_counter.inc();
+            tracing::info!("streaming client disconnected before completion");
+        }
+    }
+}
 
 pub async fn chat_completions(
     State(state): State<SharedState>,
@@ -169,28 +185,55 @@ async fn stream_chat(
     let backend = route.backend;
     let metrics = state.metrics.clone();
     let start = Instant::now();
-    let mut first_seen = false;
-
-    // Move `guards` into the stream closure so capacity is held until the
-    // stream is fully consumed or dropped (client disconnect).
-    let upstream = resp.bytes_stream();
-    let mapped = upstream.map(move |chunk| {
-        // Touch guards so they are owned by (and dropped with) the stream.
-        let _ = &guards;
-        match chunk {
-            Ok(bytes) => {
-                if !first_seen {
-                    first_seen = true;
-                    metrics
-                        .llm_ttft_seconds
-                        .with_label_values(&[model_name.as_str(), backend.as_str()])
-                        .observe(start.elapsed().as_secs_f64());
+    let cancellation_counter = metrics.request_cancellations_total.with_label_values(&[
+        model_name.as_str(),
+        backend.as_str(),
+        route.workload.as_str(),
+    ]);
+    let lifecycle = StreamLifecycle {
+        _guards: guards,
+        cancellation_counter,
+        completed: false,
+    };
+    let upstream = Box::pin(resp.bytes_stream());
+    let mapped = futures::stream::unfold(
+        (upstream, lifecycle, false),
+        move |(mut upstream, mut lifecycle, first_seen)| {
+            let metrics = metrics.clone();
+            let model_name = model_name.clone();
+            async move {
+                match upstream.next().await {
+                    Some(Ok(bytes)) => {
+                        if !first_seen {
+                            metrics
+                                .llm_ttft_seconds
+                                .with_label_values(&[model_name.as_str(), backend.as_str()])
+                                .observe(start.elapsed().as_secs_f64());
+                        }
+                        if bytes
+                            .windows(b"data: [DONE]".len())
+                            .any(|w| w == b"data: [DONE]")
+                        {
+                            lifecycle.completed = true;
+                        }
+                        Some((Ok(bytes), (upstream, lifecycle, true)))
+                    }
+                    Some(Err(error)) => {
+                        lifecycle.completed = true;
+                        Some((
+                            Err(std::io::Error::other(error.to_string())),
+                            (upstream, lifecycle, first_seen),
+                        ))
+                    }
+                    None => {
+                        lifecycle.completed = true;
+                        drop(lifecycle);
+                        None
+                    }
                 }
-                Ok(bytes)
             }
-            Err(e) => Err(std::io::Error::other(e.to_string())),
-        }
-    });
+        },
+    );
 
     let mut response = Response::builder()
         .status(200)
