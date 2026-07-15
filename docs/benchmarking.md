@@ -1,5 +1,13 @@
 # Benchmarking
 
+## Reproducibility rule
+
+Every measured run must state whether it used mocks or NVIDIA hardware and must
+record the exact command, Git commit, date, OS, CPU, RAM, GPU, driver, CUDA,
+Triton, Dynamo, vLLM, model, precision, and input/output distribution. Mock
+numbers validate the gateway and harness only; they are never evidence of GPU
+inference performance.
+
 Benchmarks turn this from an integration demo into a systems study. **No numbers
 are published until measured on real hardware with a full environment record.**
 The mock stack is only for validating that the harness runs.

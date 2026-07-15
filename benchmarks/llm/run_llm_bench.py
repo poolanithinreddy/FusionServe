@@ -70,9 +70,15 @@ def main():
     ap.add_argument("--model", default="qwen_small")
     ap.add_argument("--requests", type=int, default=64)
     ap.add_argument("--concurrency", type=int, default=8)
+    ap.add_argument("--warmup", type=int, default=4)
     ap.add_argument("--prompt", default="Explain circuit breakers in one sentence.")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
+    if args.requests <= 0 or args.concurrency <= 0 or args.warmup < 0:
+        ap.error("requests and concurrency must be positive; warmup cannot be negative")
+
+    for _ in range(args.warmup):
+        stream_once(args.target, args.model, args.prompt)
 
     results = []
     wall_start = time.perf_counter()
@@ -96,12 +102,22 @@ def main():
         "target": args.target,
         "model": args.model,
         "requests": args.requests,
+        "warmup_requests": args.warmup,
         "concurrency": args.concurrency,
         "errors": errors,
         "throughput_rps": round(len(results) / wall, 2) if wall > 0 else 0.0,
         "tokens_per_sec": round(total_tokens / wall, 2) if wall > 0 else 0.0,
-        "ttft_ms": {"p50": round(pct(ttfts, 50), 2), "p95": round(pct(ttfts, 95), 2)},
-        "e2e_ms": {"p50": round(pct(e2es, 50), 2), "p95": round(pct(e2es, 95), 2)},
+        "successes": len(results),
+        "ttft_ms": {
+            "p50": round(pct(ttfts, 50), 2),
+            "p95": round(pct(ttfts, 95), 2),
+            "p99": round(pct(ttfts, 99), 2),
+        },
+        "e2e_ms": {
+            "p50": round(pct(e2es, 50), 2),
+            "p95": round(pct(e2es, 95), 2),
+            "p99": round(pct(e2es, 99), 2),
+        },
         "note": "MOCK harness validation unless run against the GPU stack.",
     }
     text = json.dumps(out, indent=2)

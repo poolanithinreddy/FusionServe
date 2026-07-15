@@ -57,11 +57,19 @@ def main():
     ap.add_argument("--path", default="/v1/infer/resnet50")
     ap.add_argument("--requests", type=int, default=500)
     ap.add_argument("--concurrency", type=int, default=8)
+    ap.add_argument("--warmup", type=int, default=25)
     ap.add_argument("--body", default='{"inputs":[0.1,0.2,0.3]}')
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
     body = json.loads(args.body)
+    if args.requests <= 0 or args.concurrency <= 0 or args.warmup < 0:
+        ap.error("requests and concurrency must be positive; warmup cannot be negative")
+
+    # Warm-up is intentionally excluded from measured samples so connection
+    # establishment and lazy initialization do not distort steady-state data.
+    for _ in range(args.warmup):
+        one_request(args.target, args.path, body)
     latencies = []
     errors = 0
 
@@ -83,9 +91,11 @@ def main():
         "target": args.target,
         "path": args.path,
         "requests": args.requests,
+        "warmup_requests": args.warmup,
         "concurrency": args.concurrency,
         "errors": errors,
-        "throughput_rps": round(args.requests / wall, 2) if wall > 0 else 0.0,
+        "successes": len(latencies),
+        "throughput_rps": round(len(latencies) / wall, 2) if wall > 0 else 0.0,
         "latency_ms": {
             "p50": round(percentile(latencies, 50), 3),
             "p95": round(percentile(latencies, 95), 3),
