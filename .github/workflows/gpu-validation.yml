@@ -1,0 +1,44 @@
+name: gpu-validation
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to validate on a trusted NVIDIA runner
+        required: true
+        type: choice
+        options: [triton, dynamo]
+
+jobs:
+  validate:
+    runs-on: [self-hosted, linux, nvidia-gpu]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: GPU preflight
+        run: |
+          nvidia-smi
+          docker info
+          docker run --rm --gpus all ubuntu:24.04 nvidia-smi
+      - name: Validate Triton
+        if: inputs.component == 'triton'
+        run: |
+          scripts/triton/download_resnet50.sh
+          scripts/triton/start.sh
+          scripts/triton/smoke_direct.sh
+          benchmarks/triton/run_matrix.sh
+      - name: Validate Dynamo/vLLM
+        if: inputs.component == 'dynamo'
+        run: |
+          scripts/dynamo/start.sh
+          scripts/dynamo/smoke_direct.sh
+      - name: Cleanup Triton
+        if: always() && inputs.component == 'triton'
+        run: scripts/triton/stop.sh || true
+      - name: Cleanup Dynamo
+        if: always() && inputs.component == 'dynamo'
+        run: scripts/dynamo/stop.sh || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.component }}-validation-artifacts
+          path: artifacts/
