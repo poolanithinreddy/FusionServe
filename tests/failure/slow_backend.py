@@ -4,7 +4,11 @@
 Usage: slow_backend.py [triton|dynamo] <port> <latency_ms>
 Convenience wrapper; the mocks read MOCK_LATENCY_MS from the environment.
 """
-import os, subprocess, sys
+
+import os
+import subprocess
+import sys
+
 kind = sys.argv[1] if len(sys.argv) > 1 else "triton"
 port = sys.argv[2] if len(sys.argv) > 2 else ("8001" if kind == "triton" else "8000")
 latency = sys.argv[3] if len(sys.argv) > 3 else "500"

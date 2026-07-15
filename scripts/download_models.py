@@ -12,6 +12,7 @@ For ResNet-50 ONNX, the canonical source is the ONNX Model Zoo. For the LLM
 weights (served by vLLM under Dynamo), follow docs/deployment.md — those are
 pulled by vLLM/HuggingFace at container start, not by this script.
 """
+
 import argparse
 import hashlib
 import json
@@ -54,8 +55,10 @@ def download(name: str, spec: dict) -> bool:
     url = spec["url"]
     dest = REPO / spec["dest"]
     if not url:
-        print(f"[skip] {name}: no URL configured. See docs/deployment.md for how "
-              f"to obtain and place it at {dest}.")
+        print(
+            f"[skip] {name}: no URL configured. See docs/deployment.md for how "
+            f"to obtain and place it at {dest}."
+        )
         return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():

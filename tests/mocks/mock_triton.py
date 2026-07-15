@@ -16,6 +16,7 @@ Failure-injection knobs (env vars, read per request so they can change live):
 
 Pure standard library: no external dependencies.
 """
+
 import argparse
 import json
 import os
@@ -75,7 +76,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         model = self.path.split("/v2/models/")[1].split("/")[0]
 
-        latency = float(request_body.get("mock_delay_ms", env_float("MOCK_LATENCY_MS", 0.0))) / 1000.0
+        latency = (
+            float(request_body.get("mock_delay_ms", env_float("MOCK_LATENCY_MS", 0.0)))
+            / 1000.0
+        )
         if latency > 0:
             time.sleep(latency)
 
@@ -89,7 +93,9 @@ class Handler(BaseHTTPRequestHandler):
             self._json(forced_status, {"error": "forced mock status"})
             return
 
-        if os.environ.get("MOCK_MALFORMED") == "1" or request_body.get("mock_malformed"):
+        if os.environ.get("MOCK_MALFORMED") == "1" or request_body.get(
+            "mock_malformed"
+        ):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()

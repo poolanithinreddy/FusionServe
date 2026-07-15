@@ -8,6 +8,7 @@ without needing a GPU.
 Run:  pytest tests/integration/test_end_to_end.py -q
 Skips automatically if cargo is unavailable.
 """
+
 import json
 import os
 import shutil
@@ -88,19 +89,31 @@ models:
     procs = []
     procs.append(
         subprocess.Popen(
-            [sys.executable, str(ROOT / "tests/mocks/mock_triton.py"), "--port", str(TRITON_PORT)]
+            [
+                sys.executable,
+                str(ROOT / "tests/mocks/mock_triton.py"),
+                "--port",
+                str(TRITON_PORT),
+            ]
         )
     )
     procs.append(
         subprocess.Popen(
-            [sys.executable, str(ROOT / "tests/mocks/mock_dynamo.py"), "--port", str(DYNAMO_PORT)]
+            [
+                sys.executable,
+                str(ROOT / "tests/mocks/mock_dynamo.py"),
+                "--port",
+                str(DYNAMO_PORT),
+            ]
         )
     )
     env = dict(os.environ, FUSIONSERVE_CONFIG=str(cfg), RUST_LOG="warn")
     procs.append(subprocess.Popen([str(binary)], env=env))
 
     try:
-        assert _wait_http(f"http://127.0.0.1:{GATEWAY_PORT}/readyz"), "gateway did not become ready"
+        assert _wait_http(f"http://127.0.0.1:{GATEWAY_PORT}/readyz"), (
+            "gateway did not become ready"
+        )
         yield f"http://127.0.0.1:{GATEWAY_PORT}"
     finally:
         for p in procs:
@@ -123,7 +136,11 @@ def test_health_and_models(stack):
 
 def test_infer_routes_to_triton(stack):
     c = FusionServeClient(stack)
-    res = c.infer("resnet50", [{"name": "x", "datatype": "FP32", "shape": [1, 3], "data": [0.1, 0.2, 0.3]}], request_id="e2e-triton-1")
+    res = c.infer(
+        "resnet50",
+        [{"name": "x", "datatype": "FP32", "shape": [1, 3], "data": [0.1, 0.2, 0.3]}],
+        request_id="e2e-triton-1",
+    )
     assert res.raw["model_name"] == "resnet50"
     assert res.request_id == "e2e-triton-1"
     assert res.raw["received_request_id"] == "e2e-triton-1"
@@ -142,7 +159,9 @@ def test_chat_unary(stack):
 def test_chat_streaming(stack):
     c = FusionServeClient(stack)
     chunks = list(
-        c.stream_chat(ChatRequest(model="qwen_small", messages=[ChatMessage("user", "hi")]))
+        c.stream_chat(
+            ChatRequest(model="qwen_small", messages=[ChatMessage("user", "hi")])
+        )
     )
     assert "".join(chunks).strip().startswith("Hello")
 
@@ -165,8 +184,13 @@ def test_chat_model_rejected_on_infer(stack):
 def test_inflight_metrics_return_to_zero(stack):
     with urllib.request.urlopen(f"{stack}/metrics", timeout=2) as response:
         metrics = response.read().decode()
-    assert 'fusionserve_inflight_requests{backend="triton",model="resnet50"} 0' in metrics
-    assert 'fusionserve_inflight_requests{backend="dynamo",model="qwen_small"} 0' in metrics
+    assert (
+        'fusionserve_inflight_requests{backend="triton",model="resnet50"} 0' in metrics
+    )
+    assert (
+        'fusionserve_inflight_requests{backend="dynamo",model="qwen_small"} 0'
+        in metrics
+    )
 
 
 def test_downstream_deadline_returns_504(stack):
@@ -199,7 +223,9 @@ def test_stream_disconnect_increments_cancellation_metric(stack):
     with urllib.request.urlopen(f"{stack}/metrics", timeout=2) as metrics_response:
         metrics = metrics_response.read().decode()
     assert "fusionserve_request_cancellations_total" in metrics
-    assert 'backend="dynamo",model="qwen_small",workload="chat_completion"} 1' in metrics
+    assert (
+        'backend="dynamo",model="qwen_small",workload="chat_completion"} 1' in metrics
+    )
 
 
 def _raw_infer(stack, extra=None):
@@ -237,13 +263,17 @@ def test_circuit_opens_then_recovers_half_open(stack):
 def test_admin_disable_and_enable_recovers_backend(stack):
     endpoint = "http%3A%2F%2F127.0.0.1%3A18601"
     urllib.request.urlopen(
-        urllib.request.Request(f"{stack}/admin/backends/{endpoint}/disable", data=b"", method="POST")
+        urllib.request.Request(
+            f"{stack}/admin/backends/{endpoint}/disable", data=b"", method="POST"
+        )
     ).close()
     with pytest.raises(urllib.error.HTTPError) as exc:
         _raw_infer(stack)
     assert exc.value.code == 503
     urllib.request.urlopen(
-        urllib.request.Request(f"{stack}/admin/backends/{endpoint}/enable", data=b"", method="POST")
+        urllib.request.Request(
+            f"{stack}/admin/backends/{endpoint}/enable", data=b"", method="POST"
+        )
     ).close()
     with _raw_infer(stack) as response:
         assert response.status == 200

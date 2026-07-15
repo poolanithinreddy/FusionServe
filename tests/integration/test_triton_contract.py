@@ -3,6 +3,7 @@
 This does not start Triton. It prevents drift between the checked-in model
 configuration, generated KServe payload, gateway registry, and download tool.
 """
+
 import json
 import re
 import subprocess
@@ -41,4 +42,7 @@ def test_download_script_pins_a_sha256():
     text = (ROOT / "scripts/triton/download_resnet50.sh").read_text()
     match = re.search(r'EXPECTED="([0-9a-f]{64})"', text)
     assert match, "download must pin an explicit SHA-256"
-    assert match.group(1) == "79102261eb6e5fd7af5d27f41316293e388c5cb691e5d25bfb035c4f64fefe31"
+    assert (
+        match.group(1)
+        == "79102261eb6e5fd7af5d27f41316293e388c5cb691e5d25bfb035c4f64fefe31"
+    )

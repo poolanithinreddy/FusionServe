@@ -1,4 +1,5 @@
 """Unit tests for client types (no server required)."""
+
 import sys
 from pathlib import Path
 

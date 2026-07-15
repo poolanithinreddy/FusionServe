@@ -8,6 +8,7 @@ piling up unbounded. The gateway must stay responsive throughout.
 Exit 0 if: some requests were shed (429/503) AND the gateway answered /healthz
 after the storm. Exit 1 otherwise.
 """
+
 import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor

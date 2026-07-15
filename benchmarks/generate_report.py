@@ -6,13 +6,24 @@ renders a single Markdown document. It refuses to invent numbers: if a required
 environment record is missing, it flags the run as UNVERIFIED so no benchmark is
 presented as measured on hardware it was not measured on.
 """
+
 import argparse
 import json
 from pathlib import Path
 
 ENV_FIELDS = [
-    "gpu", "gpu_memory", "cpu", "ram", "os", "nvidia_driver", "cuda",
-    "triton_version", "dynamo_version", "vllm_version", "model", "precision",
+    "gpu",
+    "gpu_memory",
+    "cpu",
+    "ram",
+    "os",
+    "nvidia_driver",
+    "cuda",
+    "triton_version",
+    "dynamo_version",
+    "vllm_version",
+    "model",
+    "precision",
 ]
 
 
@@ -53,7 +64,9 @@ def render(runs) -> str:
                 lines.append(f"| {k} | {env.get(k, '—')} |")
             lines.append("")
         lines.append("```json")
-        lines.append(json.dumps({k: v for k, v in run.items() if k != "environment"}, indent=2))
+        lines.append(
+            json.dumps({k: v for k, v in run.items() if k != "environment"}, indent=2)
+        )
         lines.append("```")
         lines.append("")
     return "\n".join(lines)

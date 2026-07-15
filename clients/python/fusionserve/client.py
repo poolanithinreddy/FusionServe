@@ -4,6 +4,7 @@ Intentionally dependency-free (uses ``urllib``) so it runs in any environment,
 including CI without a package install. For high-throughput load generation see
 ``async_client.AsyncClient``.
 """
+
 from __future__ import annotations
 
 import json
@@ -75,9 +76,7 @@ class FusionServeClient:
         body = req.as_dict()
         body["stream"] = False
         raw, rid = self._post("/v1/chat/completions", body, request_id)
-        content = (
-            raw.get("choices", [{}])[0].get("message", {}).get("content", "")
-        )
+        content = raw.get("choices", [{}])[0].get("message", {}).get("content", "")
         return ChatResult(content=content, raw=raw, request_id=rid)
 
     def stream_chat(
@@ -108,7 +107,7 @@ class FusionServeClient:
             line = line.decode().strip()
             if not line.startswith("data:"):
                 continue
-            payload = line[len("data:"):].strip()
+            payload = line[len("data:") :].strip()
             if payload == "[DONE]":
                 break
             try:

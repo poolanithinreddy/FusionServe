@@ -5,6 +5,7 @@ dependency-free while still driving high concurrency. For production use you
 would swap in ``httpx``/``aiohttp``; the interface is intentionally identical to
 make that swap trivial.
 """
+
 from __future__ import annotations
 
 import asyncio

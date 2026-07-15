@@ -77,12 +77,19 @@ def validate_result(result: Dict[str, Any]) -> None:
         raise ValidationError(f"missing required metadata: {', '.join(missing)}")
     if result["schema_version"] != 2:
         raise ValidationError("schema_version must be 2")
-    if not isinstance(result["benchmark_version"], str) or not result["benchmark_version"].strip():
+    if (
+        not isinstance(result["benchmark_version"], str)
+        or not result["benchmark_version"].strip()
+    ):
         raise ValidationError("benchmark_version must be a non-empty string")
     if not isinstance(result["run_id"], str) or not result["run_id"].strip():
         raise ValidationError("run_id must be a non-empty string")
-    if not isinstance(result["git_commit"], str) or not COMMIT_RE.fullmatch(result["git_commit"]):
-        raise ValidationError("git_commit must be a 7-40 character lowercase hexadecimal SHA")
+    if not isinstance(result["git_commit"], str) or not COMMIT_RE.fullmatch(
+        result["git_commit"]
+    ):
+        raise ValidationError(
+            "git_commit must be a 7-40 character lowercase hexadecimal SHA"
+        )
     if result["backend_type"] not in BACKEND_TYPES:
         raise ValidationError(f"backend_type must be one of {sorted(BACKEND_TYPES)}")
     if result["hardware_type"] not in HARDWARE_TYPES:
@@ -95,14 +102,19 @@ def validate_result(result: Dict[str, Any]) -> None:
     if not isinstance(environment, dict):
         raise ValidationError("environment must be an object")
     environment_fields = ("os", "cpu", "memory_bytes", "gpu_count")
-    missing_environment = [field for field in environment_fields if field not in environment]
+    missing_environment = [
+        field for field in environment_fields if field not in environment
+    ]
     if missing_environment:
         raise ValidationError(
             f"missing hardware metadata: {', '.join(missing_environment)}"
         )
     if not environment["os"] or not environment["cpu"]:
         raise ValidationError("environment os and cpu must be non-empty")
-    if _nonnegative_integer(environment["memory_bytes"], "environment.memory_bytes") == 0:
+    if (
+        _nonnegative_integer(environment["memory_bytes"], "environment.memory_bytes")
+        == 0
+    ):
         raise ValidationError("environment.memory_bytes must be positive")
     gpu_count = _nonnegative_integer(environment["gpu_count"], "environment.gpu_count")
     if result["hardware_type"] == "cpu" and gpu_count != 0:
@@ -113,7 +125,11 @@ def validate_result(result: Dict[str, Any]) -> None:
         raise ValidationError("multi-GPU results must have gpu_count>=2")
 
     units = result["units"]
-    if not isinstance(units, dict) or not units.get("latency") or not units.get("throughput"):
+    if (
+        not isinstance(units, dict)
+        or not units.get("latency")
+        or not units.get("throughput")
+    ):
         raise ValidationError("units must define latency and throughput")
 
     found_count_group = False
@@ -127,17 +143,25 @@ def validate_result(result: Dict[str, Any]) -> None:
                         f"{path} must contain requests, successes and errors together"
                     )
                 requests = _nonnegative_integer(value["requests"], f"{path}.requests")
-                successes = _nonnegative_integer(value["successes"], f"{path}.successes")
+                successes = _nonnegative_integer(
+                    value["successes"], f"{path}.successes"
+                )
                 errors = _nonnegative_integer(value["errors"], f"{path}.errors")
                 if requests < 1:
                     raise ValidationError(f"{path}.requests must be positive")
                 if successes + errors != requests:
-                    raise ValidationError(f"{path} successes + errors must equal requests")
+                    raise ValidationError(
+                        f"{path} successes + errors must equal requests"
+                    )
                 if "error_rate" in value:
                     expected = errors / requests
-                    actual = _nonnegative_number(value["error_rate"], f"{path}.error_rate")
+                    actual = _nonnegative_number(
+                        value["error_rate"], f"{path}.error_rate"
+                    )
                     if not math.isclose(actual, expected, rel_tol=1e-9, abs_tol=1e-9):
-                        raise ValidationError(f"{path}.error_rate is inconsistent with counts")
+                        raise ValidationError(
+                            f"{path}.error_rate is inconsistent with counts"
+                        )
         leaf = path.rsplit(".", 1)[-1]
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             timing = leaf.endswith(("_ms", "_us", "_seconds"))

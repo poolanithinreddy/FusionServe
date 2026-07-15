@@ -11,6 +11,7 @@ Against the mock backends this is a smoke test, NOT a publishable benchmark —
 real numbers require the GPU stack and a recorded environment (see
 docs/benchmarking.md). Output is JSON to stdout and optionally a file.
 """
+
 import argparse
 import json
 import statistics

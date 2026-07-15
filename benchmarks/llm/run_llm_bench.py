@@ -9,6 +9,7 @@ For rigorous LLM benchmarking on real hardware, prefer NVIDIA GenAI-Perf /
 Dynamo's documented benchmarking flow (see docs/benchmarking.md). This script is
 the gateway-side companion that measures what clients actually observe.
 """
+
 import argparse
 import json
 import statistics
@@ -21,7 +22,11 @@ from urllib import request
 
 def stream_once(target: str, model: str, prompt: str):
     body = json.dumps(
-        {"model": model, "stream": True, "messages": [{"role": "user", "content": prompt}]}
+        {
+            "model": model,
+            "stream": True,
+            "messages": [{"role": "user", "content": prompt}],
+        }
     ).encode()
     req = request.Request(
         f"{target}/v1/chat/completions",

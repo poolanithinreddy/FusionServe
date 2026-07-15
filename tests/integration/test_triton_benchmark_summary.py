@@ -13,7 +13,13 @@ def test_perf_analyzer_csv_is_normalized(tmp_path):
     output = tmp_path / "summary.json"
     root = Path(__file__).resolve().parents[2]
     subprocess.run(
-        [sys.executable, str(root / "benchmarks/triton/summarize.py"), str(source), "--output", str(output)],
+        [
+            sys.executable,
+            str(root / "benchmarks/triton/summarize.py"),
+            str(source),
+            "--output",
+            str(output),
+        ],
         check=True,
     )
     measurement = json.loads(output.read_text())["measurements"][0]

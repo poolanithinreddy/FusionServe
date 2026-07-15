@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Normalize Triton Performance Analyzer CSV files into stable JSON."""
+
 import argparse
 import csv
 import json
@@ -22,7 +23,9 @@ def parse(path: Path):
     return {
         "source": path.name,
         "concurrency": int(number("Concurrency") or 0),
-        "throughput_rps": number("Inferences/Second", "Inferences/Second vs. Client Average Batch Latency"),
+        "throughput_rps": number(
+            "Inferences/Second", "Inferences/Second vs. Client Average Batch Latency"
+        ),
         "client_latency_us": number("Client Send", "Client Avg Latency"),
         "server_queue_us": number("Server Queue"),
         "server_compute_us": number("Server Compute Infer", "Server Compute"),

@@ -52,12 +52,21 @@ def test_accepts_valid_complete_result(valid_result):
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
-        (lambda result: result["measurement"]["latency_ms"].update(p99=1.5), "not monotonic"),
+        (
+            lambda result: result["measurement"]["latency_ms"].update(p99=1.5),
+            "not monotonic",
+        ),
         (lambda result: result["measurement"].update(errors=2), "must equal requests"),
         (lambda result: result["measurement"].update(error_rate=0.2), "inconsistent"),
-        (lambda result: result["measurement"]["latency_ms"].update(p50=-1), "non-negative"),
+        (
+            lambda result: result["measurement"]["latency_ms"].update(p50=-1),
+            "non-negative",
+        ),
         (lambda result: result.pop("benchmark_version"), "missing required metadata"),
-        (lambda result: result["environment"].pop("gpu_count"), "missing hardware metadata"),
+        (
+            lambda result: result["environment"].pop("gpu_count"),
+            "missing hardware metadata",
+        ),
         (lambda result: result.update(hardware_type="single_gpu"), "gpu_count=1"),
     ],
 )
