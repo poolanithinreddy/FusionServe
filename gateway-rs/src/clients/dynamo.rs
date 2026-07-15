@@ -25,8 +25,14 @@ impl DynamoClient {
         Self { http }
     }
 
-    fn chat_url(endpoint: &str) -> String {
-        format!("{}/v1/chat/completions", endpoint.trim_end_matches('/'))
+    fn chat_url(endpoint: &str) -> Result<reqwest::Url, UpstreamError> {
+        let mut url = reqwest::Url::parse(endpoint)
+            .map_err(|e| UpstreamError::Connect(format!("invalid Dynamo endpoint: {e}")))?;
+        url.path_segments_mut()
+            .map_err(|_| UpstreamError::Connect("Dynamo endpoint cannot be a base URL".into()))?
+            .pop_if_empty()
+            .extend(["v1", "chat", "completions"]);
+        Ok(url)
     }
 
     /// Non-streaming chat completion. Returns the parsed JSON response.
@@ -34,11 +40,13 @@ impl DynamoClient {
         &self,
         endpoint: &str,
         body: &Value,
+        request_id: &str,
         timeout: Duration,
     ) -> Result<Value, UpstreamError> {
         let resp = self
             .http
-            .post(Self::chat_url(endpoint))
+            .post(Self::chat_url(endpoint)?)
+            .header("x-request-id", request_id)
             .json(body)
             .timeout(timeout)
             .send()
@@ -64,11 +72,14 @@ impl DynamoClient {
         &self,
         endpoint: &str,
         body: &Value,
+        request_id: &str,
         timeout: Duration,
     ) -> Result<reqwest::Response, UpstreamError> {
         let resp = self
             .http
-            .post(Self::chat_url(endpoint))
+            .post(Self::chat_url(endpoint)?)
+            .header("x-request-id", request_id)
+            .header(reqwest::header::ACCEPT, "text/event-stream")
             .json(body)
             .timeout(timeout)
             .send()
@@ -81,5 +92,21 @@ impl DynamoClient {
             return Err(classify_status(status, text));
         }
         Ok(resp)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn constructs_openai_compatible_url_with_prefix() {
+        let url = DynamoClient::chat_url("http://dynamo:8000/api/").unwrap();
+        assert_eq!(url.as_str(), "http://dynamo:8000/api/v1/chat/completions");
+    }
+
+    #[test]
+    fn rejects_invalid_endpoint() {
+        assert!(DynamoClient::chat_url("not a URL").is_err());
     }
 }

@@ -109,9 +109,12 @@ async fn unary_chat(
     let retry = route.model.cfg.retry.clone();
 
     let result = policy::run_with_retry(&state, &route, &retry, || {
-        state
-            .dynamo
-            .chat_once(&route.model.cfg.endpoint, &payload, timeout)
+        state.dynamo.chat_once(
+            &route.model.cfg.endpoint,
+            &payload,
+            &ctx.request_id,
+            timeout,
+        )
     })
     .await;
 
@@ -142,7 +145,12 @@ async fn stream_chat(
     // Streaming requests are never retried; open the stream once.
     let resp = match state
         .dynamo
-        .chat_stream(&route.model.cfg.endpoint, &payload, timeout)
+        .chat_stream(
+            &route.model.cfg.endpoint,
+            &payload,
+            &ctx.request_id,
+            timeout,
+        )
         .await
     {
         Ok(r) => r,
