@@ -48,7 +48,7 @@ services:
 
   # ---- GPU profile (illustrative; pin exact tags before benchmarking) -------
   triton:
-    image: nvcr.io/nvidia/tritonserver:26.06-py3
+    image: nvcr.io/nvidia/tritonserver:26.04-py3
     command: ["tritonserver", "--model-repository=/models"]
     volumes:
       - ./models/triton:/models:ro

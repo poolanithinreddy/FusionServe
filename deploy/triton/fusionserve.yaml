@@ -1,0 +1,26 @@
+server:
+  bind_addr: "0.0.0.0:8080"
+  global_max_inflight: 128
+  default_deadline_ms: 5000
+admission:
+  queue_capacity: 64
+  queue_timeout_ms: 1000
+  circuit_breaker:
+    failure_threshold: 3
+    open_cooldown_ms: 2000
+    half_open_success_threshold: 1
+health:
+  poll_interval_ms: 1000
+  unhealthy_after: 3
+models:
+  resnet50_onnx:
+    workload: image_classification
+    backend: triton
+    protocol: http
+    endpoint: "http://127.0.0.1:8000"
+    timeout_ms: 3000
+    max_concurrency: 64
+    max_request_bytes: 8388608
+    retry:
+      max_retries: 1
+      only_on_connect_error: true
