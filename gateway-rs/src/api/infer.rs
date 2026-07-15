@@ -27,6 +27,24 @@ pub async fn infer(
     run_infer(state, model, headers, body, ApiSurface::Infer).await
 }
 
+/// Unified inference surface: the model is named in the JSON body. This keeps
+/// compatibility with clients that cannot construct model-specific paths.
+pub async fn infer_by_body(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let model = match model_from_body(&body) {
+        Some(model) => model,
+        None => {
+            return GatewayError::bad_request("missing 'model' field")
+                .with_request_id(request_id_from(&headers))
+                .into_response()
+        }
+    };
+    run_infer(state, model, headers, body, ApiSurface::Infer).await
+}
+
 /// OpenAI-style embeddings: the model is named in the body.
 pub async fn embeddings(
     State(state): State<SharedState>,
@@ -34,10 +52,7 @@ pub async fn embeddings(
     body: Bytes,
 ) -> Response {
     // Peek only the model name; the full body is forwarded as-is.
-    let model = match serde_json::from_slice::<Value>(&body)
-        .ok()
-        .and_then(|v| v.get("model").and_then(|m| m.as_str()).map(String::from))
-    {
+    let model = match model_from_body(&body) {
         Some(m) => m,
         None => {
             let rid = request_id_from(&headers);
@@ -47,6 +62,12 @@ pub async fn embeddings(
         }
     };
     run_infer(state, model, headers, body, ApiSurface::Embed).await
+}
+
+fn model_from_body(body: &[u8]) -> Option<String> {
+    serde_json::from_slice::<Value>(body)
+        .ok()
+        .and_then(|v| v.get("model").and_then(|m| m.as_str()).map(String::from))
 }
 
 async fn run_infer(

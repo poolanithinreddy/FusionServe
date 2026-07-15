@@ -31,6 +31,7 @@ pub fn router(state: SharedState) -> Router {
         .route("/v1/models/:name", get(api::models::get_model))
         // Non-LLM inference
         .route("/v1/infer/:model", post(api::infer::infer))
+        .route("/v1/infer", post(api::infer::infer_by_body))
         .route("/v1/embeddings", post(api::infer::embeddings))
         // LLM inference
         .route("/v1/chat/completions", post(api::chat::chat_completions))

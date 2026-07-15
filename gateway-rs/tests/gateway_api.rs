@@ -94,6 +94,28 @@ async fn chat_model_rejected_on_infer_surface() {
 }
 
 #[tokio::test]
+async fn unified_infer_requires_model_in_body() {
+    let server = server();
+    let resp = server.post("/v1/infer").json(&json!({"inputs": []})).await;
+    resp.assert_status(axum::http::StatusCode::BAD_REQUEST);
+    let body: serde_json::Value = resp.json();
+    assert_eq!(body["error"]["code"], "bad_request");
+    assert!(body["error"]["request_id"].is_string());
+}
+
+#[tokio::test]
+async fn unified_infer_classifies_model_from_body() {
+    let server = server();
+    let resp = server
+        .post("/v1/infer")
+        .json(&json!({"model": "does_not_exist", "inputs": []}))
+        .await;
+    resp.assert_status(axum::http::StatusCode::NOT_FOUND);
+    let body: serde_json::Value = resp.json();
+    assert_eq!(body["error"]["code"], "unknown_model");
+}
+
+#[tokio::test]
 async fn payload_too_large_is_413() {
     let server = server();
     // resnet50 has a 1024-byte limit.
