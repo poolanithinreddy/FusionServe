@@ -1,0 +1,12 @@
+[workspace]
+members = ["gateway-rs"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+rust-version = "1.75"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
