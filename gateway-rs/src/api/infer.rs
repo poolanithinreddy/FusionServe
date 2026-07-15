@@ -110,9 +110,13 @@ async fn run_infer(
     let retry = route.model.cfg.retry.clone();
 
     let result = policy::run_with_retry(&state, &route, &retry, || {
-        state
-            .triton
-            .infer(&route.model.cfg.endpoint, &model, &payload, timeout)
+        state.triton.infer(
+            &route.model.cfg.endpoint,
+            &model,
+            &payload,
+            &ctx.request_id,
+            timeout,
+        )
     })
     .await;
 
