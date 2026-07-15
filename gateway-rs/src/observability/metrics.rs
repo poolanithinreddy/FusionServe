@@ -137,3 +137,22 @@ impl Metrics {
         String::from_utf8(buf).unwrap_or_default()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exposition_contains_stable_metric_families() {
+        let metrics = Metrics::new().unwrap();
+        metrics
+            .requests_total
+            .with_label_values(&["resnet50", "triton", "image_classification", "ok"])
+            .inc();
+        let text = metrics.encode();
+        assert!(text.contains("fusionserve_requests_total"));
+        assert!(text.contains("model=\"resnet50\""));
+        assert!(!text.contains("request_id"));
+        assert!(!text.contains("prompt"));
+    }
+}

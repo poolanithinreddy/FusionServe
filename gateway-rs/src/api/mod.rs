@@ -17,7 +17,12 @@ pub fn request_id_from(headers: &HeaderMap) -> String {
     headers
         .get(REQUEST_ID_HEADER)
         .and_then(|v| v.to_str().ok())
-        .filter(|s| !s.is_empty())
+        .filter(|s| {
+            !s.is_empty()
+                && s.len() <= 128
+                && s.bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+        })
         .map(|s| s.to_string())
         .unwrap_or_else(new_request_id)
 }
@@ -54,5 +59,50 @@ pub fn effective_timeout(ctx: &RequestContext, model_timeout: Duration) -> Durat
     match ctx.remaining() {
         Some(rem) => rem.min(model_timeout),
         None => Duration::from_millis(0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::HeaderValue;
+
+    #[test]
+    fn accepts_safe_correlation_id() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            REQUEST_ID_HEADER,
+            HeaderValue::from_static("job_42.retry-1"),
+        );
+        assert_eq!(request_id_from(&headers), "job_42.retry-1");
+    }
+
+    #[test]
+    fn replaces_oversized_or_unsafe_correlation_id() {
+        let mut headers = HeaderMap::new();
+        headers.insert(REQUEST_ID_HEADER, HeaderValue::from_static("unsafe/value"));
+        assert_ne!(request_id_from(&headers), "unsafe/value");
+
+        headers.insert(
+            REQUEST_ID_HEADER,
+            HeaderValue::from_str(&"a".repeat(129)).unwrap(),
+        );
+        assert_ne!(request_id_from(&headers), "a".repeat(129));
+    }
+
+    #[test]
+    fn client_deadline_can_only_shorten_server_deadline() {
+        let mut headers = HeaderMap::new();
+        headers.insert(DEADLINE_HEADER, HeaderValue::from_static("250"));
+        assert_eq!(
+            resolve_deadline(&headers, Duration::from_secs(5)),
+            Duration::from_millis(250)
+        );
+
+        headers.insert(DEADLINE_HEADER, HeaderValue::from_static("9000"));
+        assert_eq!(
+            resolve_deadline(&headers, Duration::from_secs(5)),
+            Duration::from_secs(5)
+        );
     }
 }

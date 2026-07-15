@@ -16,6 +16,7 @@ pub mod state;
 use axum::routing::{get, post};
 use axum::Router;
 use state::SharedState;
+use tower_http::trace::TraceLayer;
 
 /// Build the full application router.
 pub fn router(state: SharedState) -> Router {
@@ -43,6 +44,27 @@ pub fn router(state: SharedState) -> Router {
         .route(
             "/admin/backends/:endpoint/enable",
             post(api::admin::enable_backend),
+        )
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &axum::http::Request<_>| {
+                    tracing::info_span!(
+                        "gateway.request",
+                        method = %request.method(),
+                        path = %request.uri().path(),
+                    )
+                })
+                .on_response(
+                    |response: &axum::http::Response<_>,
+                     latency: std::time::Duration,
+                     _span: &tracing::Span| {
+                        tracing::info!(
+                            status = response.status().as_u16(),
+                            latency_ms = latency.as_secs_f64() * 1000.0,
+                            "request completed"
+                        );
+                    },
+                ),
         )
         .with_state(state)
 }
