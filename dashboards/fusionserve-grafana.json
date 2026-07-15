@@ -72,6 +72,25 @@
         { "expr": "sum(rate(fusionserve_retries_total[1m]))", "legendFormat": "retries" },
         { "expr": "sum(rate(fusionserve_request_cancellations_total[1m]))", "legendFormat": "cancels" }
       ]
+    },
+    {
+      "id": 9,
+      "title": "GPU utilization",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 22 },
+      "targets": [
+        { "expr": "DCGM_FI_DEV_GPU_UTIL", "legendFormat": "GPU {{gpu}}" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "GPU framebuffer memory",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 22 },
+      "targets": [
+        { "expr": "DCGM_FI_DEV_FB_USED", "legendFormat": "used GPU {{gpu}}" },
+        { "expr": "DCGM_FI_DEV_FB_FREE", "legendFormat": "free GPU {{gpu}}" }
+      ]
     }
   ]
 }
