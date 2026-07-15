@@ -35,6 +35,7 @@ struct Inner {
     state: State,
     consecutive_failures: usize,
     half_open_successes: usize,
+    half_open_probe_inflight: bool,
     opened_at: Option<Instant>,
 }
 
@@ -52,6 +53,7 @@ impl CircuitBreaker {
                 state: State::Closed,
                 consecutive_failures: 0,
                 half_open_successes: 0,
+                half_open_probe_inflight: false,
                 opened_at: None,
             }),
             failure_threshold: cfg.failure_threshold,
@@ -63,9 +65,17 @@ impl CircuitBreaker {
     /// Decide whether a request may proceed. Transitions Open → HalfOpen once
     /// the cooldown has elapsed (and admits that first trial request).
     pub fn allow(&self) -> bool {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         match g.state {
-            State::Closed | State::HalfOpen => true,
+            State::Closed => true,
+            State::HalfOpen if !g.half_open_probe_inflight => {
+                g.half_open_probe_inflight = true;
+                true
+            }
+            State::HalfOpen => false,
             State::Open => {
                 let elapsed = g
                     .opened_at
@@ -74,6 +84,7 @@ impl CircuitBreaker {
                 if elapsed >= self.open_cooldown {
                     g.state = State::HalfOpen;
                     g.half_open_successes = 0;
+                    g.half_open_probe_inflight = true;
                     true
                 } else {
                     false
@@ -83,12 +94,16 @@ impl CircuitBreaker {
     }
 
     pub fn on_success(&self) {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         match g.state {
             State::Closed => {
                 g.consecutive_failures = 0;
             }
             State::HalfOpen => {
+                g.half_open_probe_inflight = false;
                 g.half_open_successes += 1;
                 if g.half_open_successes >= self.half_open_success_threshold {
                     g.state = State::Closed;
@@ -102,7 +117,10 @@ impl CircuitBreaker {
     }
 
     pub fn on_failure(&self) {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         match g.state {
             State::Closed => {
                 g.consecutive_failures += 1;
@@ -116,13 +134,17 @@ impl CircuitBreaker {
                 g.state = State::Open;
                 g.opened_at = Some(Instant::now());
                 g.half_open_successes = 0;
+                g.half_open_probe_inflight = false;
             }
             State::Open => {}
         }
     }
 
     pub fn state(&self) -> State {
-        self.inner.lock().unwrap().state
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .state
     }
 }
 
@@ -162,6 +184,7 @@ mod tests {
         assert!(cb.allow());
         assert_eq!(cb.state(), State::HalfOpen);
         cb.on_success();
+        assert!(cb.allow());
         cb.on_success(); // meets half_open_success_threshold
         assert_eq!(cb.state(), State::Closed);
     }
@@ -189,5 +212,18 @@ mod tests {
         cb.on_failure();
         // Only two consecutive failures after the reset → still closed.
         assert_eq!(cb.state(), State::Closed);
+    }
+
+    #[test]
+    fn half_open_allows_only_one_probe_at_a_time() {
+        let cb = CircuitBreaker::new(&cfg());
+        for _ in 0..3 {
+            cb.on_failure();
+        }
+        std::thread::sleep(Duration::from_millis(25));
+        assert!(cb.allow());
+        assert!(!cb.allow());
+        cb.on_success();
+        assert!(cb.allow());
     }
 }
