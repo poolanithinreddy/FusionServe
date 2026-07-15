@@ -65,10 +65,16 @@ services:
     profiles: ["gpu"]
 
   dynamo-frontend:
-    image: nvcr.io/nvidia/ai-dynamo/dynamo:1.2.1
+    image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.2.0
     # Frontend + router; vLLM workers register with it. See docs/deployment.md.
     ports:
       - "8000:8000"
+    command:
+      - bash
+      - -lc
+      - >-
+        python3 -m dynamo.frontend --http-port 8000 --discovery-backend file &
+        exec python3 -m dynamo.vllm --model Qwen/Qwen3-0.6B --discovery-backend file
     deploy:
       resources:
         reservations:

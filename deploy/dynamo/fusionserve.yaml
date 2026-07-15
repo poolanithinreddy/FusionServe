@@ -1,0 +1,27 @@
+server:
+  bind_addr: "0.0.0.0:8080"
+  global_max_inflight: 64
+  default_deadline_ms: 30000
+admission:
+  queue_capacity: 32
+  queue_timeout_ms: 2000
+  circuit_breaker:
+    failure_threshold: 3
+    open_cooldown_ms: 5000
+    half_open_success_threshold: 1
+health:
+  poll_interval_ms: 2000
+  unhealthy_after: 3
+models:
+  Qwen/Qwen3-0.6B:
+    workload: chat_completion
+    backend: dynamo
+    protocol: http
+    endpoint: "http://127.0.0.1:8000"
+    timeout_ms: 30000
+    max_concurrency: 32
+    streaming: true
+    max_request_bytes: 1048576
+    retry:
+      max_retries: 0
+      only_on_connect_error: true
