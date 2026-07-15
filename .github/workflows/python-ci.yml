@@ -1,0 +1,20 @@
+name: python-ci
+on:
+  push: { paths: ["clients/python/**", "benchmarks/**", "tests/**", ".github/workflows/python-ci.yml"] }
+  pull_request: { paths: ["clients/python/**", "benchmarks/**", "tests/**"] }
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: install
+        run: pip install ruff mypy pytest
+      - name: ruff
+        run: ruff check clients/python tests benchmarks
+      - name: mypy
+        run: mypy clients/python/fusionserve || true
+      - name: unit tests
+        run: pytest clients/python/tests -q

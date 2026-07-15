@@ -1,0 +1,77 @@
+{
+  "title": "FusionServe Gateway",
+  "uid": "fusionserve-gateway",
+  "schemaVersion": 39,
+  "editable": true,
+  "tags": ["fusionserve"],
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate by outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum by (status) (rate(fusionserve_requests_total[1m]))", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Latency p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum by (le) (rate(fusionserve_request_latency_seconds_bucket[5m])))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(fusionserve_request_latency_seconds_bucket[5m])))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(fusionserve_request_latency_seconds_bucket[5m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "In-flight requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [ { "expr": "fusionserve_inflight_requests", "legendFormat": "{{model}}" } ]
+    },
+    {
+      "id": 4,
+      "title": "Queue depth",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [ { "expr": "fusionserve_queue_depth", "legendFormat": "{{model}}" } ]
+    },
+    {
+      "id": 5,
+      "title": "Circuit breaker state (0=closed,1=half,2=open)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [ { "expr": "fusionserve_circuit_breaker_state", "legendFormat": "{{model}}" } ]
+    },
+    {
+      "id": 6,
+      "title": "Backend health",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 16 },
+      "targets": [ { "expr": "fusionserve_backend_health", "legendFormat": "{{backend}} {{endpoint}}" } ]
+    },
+    {
+      "id": 7,
+      "title": "LLM time-to-first-token p95",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 16 },
+      "targets": [ { "expr": "histogram_quantile(0.95, sum by (le,model) (rate(fusionserve_llm_ttft_seconds_bucket[5m])))", "legendFormat": "{{model}}" } ]
+    },
+    {
+      "id": 8,
+      "title": "Backend errors / retries / cancellations",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 16 },
+      "targets": [
+        { "expr": "sum by (code) (rate(fusionserve_backend_errors_total[1m]))", "legendFormat": "err {{code}}" },
+        { "expr": "sum(rate(fusionserve_retries_total[1m]))", "legendFormat": "retries" },
+        { "expr": "sum(rate(fusionserve_request_cancellations_total[1m]))", "legendFormat": "cancels" }
+      ]
+    }
+  ]
+}

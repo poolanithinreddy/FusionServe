@@ -1,0 +1,8 @@
+**/target/
+**/build/
+**/__pycache__/
+.git/
+*.onnx
+*.plan
+benchmarks/results/
+.venv/

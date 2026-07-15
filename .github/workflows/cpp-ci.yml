@@ -1,0 +1,28 @@
+name: cpp-ci
+on:
+  push: { paths: ["clients/cpp/**", ".github/workflows/cpp-ci.yml"] }
+  pull_request: { paths: ["clients/cpp/**"] }
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake libcurl4-openssl-dev clang-format
+      - name: clang-format check
+        working-directory: clients/cpp
+        run: |
+          find include src tests -name '*.?pp' -o -name '*.hpp' | xargs clang-format --dry-run --Werror || true
+      - name: configure
+        working-directory: clients/cpp
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: build
+        working-directory: clients/cpp
+        run: cmake --build build -j
+      - name: test
+        working-directory: clients/cpp
+        run: ctest --test-dir build --output-on-failure
+      - name: asan build
+        working-directory: clients/cpp
+        run: cmake -S . -B build-asan -DENABLE_ASAN=ON && cmake --build build-asan -j && ctest --test-dir build-asan --output-on-failure

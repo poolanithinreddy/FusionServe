@@ -1,0 +1,49 @@
+# Rust
+/gateway-rs/target/
+**/*.rs.bk
+
+# C++
+/clients/cpp/build/
+*.o
+*.a
+*.so
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Models (never commit large binaries)
+*.onnx
+*.plan
+*.engine
+*.bin
+*.safetensors
+models/triton/**/1/*.onnx
+models/triton/**/1/*.plan
+
+# Benchmark raw outputs (keep curated reports in docs/)
+benchmarks/results/*.json
+benchmarks/results/*.csv
+benchmarks/results/charts/
+
+# Env / secrets (deny-listed)
+.env
+.env.*
+*.key
+*.pem
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Claude Code local session settings (not part of the project)
+.claude/settings.json
+.claude/settings.local.json

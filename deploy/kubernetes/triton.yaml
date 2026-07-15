@@ -1,0 +1,45 @@
+# Triton Inference Server (GPU). Model repo mounted from a PVC you provision.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton
+  namespace: fusionserve
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: triton } }
+  template:
+    metadata:
+      labels: { app: triton }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+    spec:
+      containers:
+        - name: triton
+          image: nvcr.io/nvidia/tritonserver:26.06-py3
+          args: ["tritonserver", "--model-repository=/models"]
+          ports:
+            - { containerPort: 8000, name: http }
+            - { containerPort: 8001, name: grpc }
+            - { containerPort: 8002, name: metrics }
+          resources:
+            limits: { nvidia.com/gpu: 1 }
+          volumeMounts:
+            - { name: models, mountPath: /models, readOnly: true }
+          readinessProbe:
+            httpGet: { path: /v2/health/ready, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: models
+          persistentVolumeClaim: { claimName: triton-models }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: triton, namespace: fusionserve }
+spec:
+  selector: { app: triton }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }
+    - { name: grpc, port: 8001, targetPort: 8001 }
+    - { name: metrics, port: 8002, targetPort: 8002 }

@@ -1,0 +1,27 @@
+name: integration-ci
+# GPU-free integration: builds the gateway, runs it against the mock backends,
+# and exercises the full request path via the Python end-to-end suite.
+on:
+  push: { branches: ["main"] }
+  pull_request: {}
+
+jobs:
+  e2e-mock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: "gateway-rs" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: build gateway
+        run: cargo build --manifest-path gateway-rs/Cargo.toml
+      - name: install pytest
+        run: pip install pytest
+      - name: end-to-end against mocks
+        run: pytest tests/integration/test_end_to_end.py -q
+      - name: failure suite (smoke)
+        run: bash tests/failure/run_failure_suite.sh
+      - name: docker-compose config validation
+        run: docker compose --profile mock config >/dev/null

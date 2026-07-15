@@ -1,0 +1,33 @@
+# ResNet-50, TensorRT engine, throughput-optimized dynamic batching.
+# Compare against resnet50_onnx to study ONNX Runtime vs TensorRT and the effect
+# of batching. Build the .plan with scripts/build_tensorrt_engine.sh.
+name: "resnet50_tensorrt"
+platform: "tensorrt_plan"
+max_batch_size: 32
+
+input [
+  {
+    name: "input"
+    data_type: TYPE_FP32
+    dims: [ 3, 224, 224 ]
+  }
+]
+output [
+  {
+    name: "output"
+    data_type: TYPE_FP32
+    dims: [ 1000 ]
+  }
+]
+
+dynamic_batching {
+  preferred_batch_size: [ 8, 16, 32 ]
+  max_queue_delay_microseconds: 4000
+}
+
+instance_group [
+  {
+    count: 2
+    kind: KIND_GPU
+  }
+]

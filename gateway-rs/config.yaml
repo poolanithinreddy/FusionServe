@@ -1,0 +1,68 @@
+# FusionServe gateway configuration.
+# In the mock profile, endpoints point at the mock Triton/Dynamo servers.
+
+server:
+  bind_addr: "0.0.0.0:8080"
+  # Global cap across all in-flight requests (defense in depth on top of
+  # per-backend limits). Requests beyond this are rejected with 503.
+  global_max_inflight: 512
+  # Default request deadline if the client does not supply one.
+  default_deadline_ms: 30000
+
+admission:
+  # Bounded wait queue per backend. When full, new work is rejected (429).
+  queue_capacity: 256
+  # Max time a request may wait in the queue before being rejected.
+  queue_timeout_ms: 2000
+  circuit_breaker:
+    # Open the breaker after this many consecutive failures.
+    failure_threshold: 5
+    # Stay open this long before allowing a half-open trial request.
+    open_cooldown_ms: 5000
+    # Consecutive successes in half-open needed to fully close.
+    half_open_success_threshold: 2
+
+health:
+  # Interval at which the gateway polls each backend's health endpoint.
+  poll_interval_ms: 2000
+  # Backend marked unhealthy after this many failed polls.
+  unhealthy_after: 3
+
+models:
+  resnet50:
+    workload: image_classification
+    backend: triton
+    protocol: http
+    endpoint: "http://localhost:8001"
+    timeout_ms: 2000
+    max_concurrency: 64
+    max_request_bytes: 8388608   # 8 MiB
+    retry:
+      max_retries: 1
+      only_on_connect_error: true
+
+  text_embedding:
+    workload: embedding
+    backend: triton
+    protocol: http
+    endpoint: "http://localhost:8001"
+    timeout_ms: 1500
+    max_concurrency: 128
+    max_request_bytes: 1048576   # 1 MiB
+    retry:
+      max_retries: 1
+      only_on_connect_error: true
+
+  qwen_small:
+    workload: chat_completion
+    backend: dynamo
+    protocol: http
+    endpoint: "http://localhost:8000"
+    timeout_ms: 30000
+    max_concurrency: 32
+    streaming: true
+    max_request_bytes: 1048576
+    retry:
+      # LLM requests are NOT retried once streaming has begun; see clients/dynamo.rs
+      max_retries: 0
+      only_on_connect_error: true

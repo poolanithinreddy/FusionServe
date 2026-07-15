@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fusionserve-config
+  namespace: fusionserve
+data:
+  config.yaml: |
+    server:
+      bind_addr: "0.0.0.0:8080"
+      global_max_inflight: 512
+      default_deadline_ms: 30000
+    admission:
+      queue_capacity: 256
+      queue_timeout_ms: 2000
+      circuit_breaker:
+        failure_threshold: 5
+        open_cooldown_ms: 5000
+        half_open_success_threshold: 2
+    health:
+      poll_interval_ms: 2000
+      unhealthy_after: 3
+    models:
+      resnet50:
+        workload: image_classification
+        backend: triton
+        protocol: http
+        endpoint: "http://triton:8000"
+        timeout_ms: 2000
+        max_concurrency: 64
+      qwen_small:
+        workload: chat_completion
+        backend: dynamo
+        protocol: http
+        endpoint: "http://dynamo-frontend:8000"
+        timeout_ms: 30000
+        max_concurrency: 32
+        streaming: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fusionserve-gateway
+  namespace: fusionserve
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: fusionserve-gateway }
+  template:
+    metadata:
+      labels: { app: fusionserve-gateway }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: gateway
+          image: fusionserve/gateway:0.1.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUSIONSERVE_CONFIG
+              value: /etc/fusionserve/config.yaml
+            - name: RUST_LOG
+              value: info
+          volumeMounts:
+            - name: config
+              mountPath: /etc/fusionserve
+              readOnly: true
+          resources:
+            requests: { cpu: "250m", memory: "128Mi" }
+            limits:   { cpu: "1",    memory: "512Mi" }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap: { name: fusionserve-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fusionserve-gateway
+  namespace: fusionserve
+spec:
+  selector: { app: fusionserve-gateway }
+  ports:
+    - port: 80
+      targetPort: 8080

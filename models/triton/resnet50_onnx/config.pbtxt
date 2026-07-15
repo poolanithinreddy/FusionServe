@@ -1,0 +1,28 @@
+# ResNet-50 image classification, ONNX Runtime backend.
+# Baseline configuration: dynamic batching OFF (max_batch_size 0).
+# This is the control for the batching study in docs/benchmarking.md.
+name: "resnet50_onnx"
+platform: "onnxruntime_onnx"
+max_batch_size: 0
+
+input [
+  {
+    name: "input"
+    data_type: TYPE_FP32
+    dims: [ 3, 224, 224 ]
+  }
+]
+output [
+  {
+    name: "output"
+    data_type: TYPE_FP32
+    dims: [ 1000 ]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]

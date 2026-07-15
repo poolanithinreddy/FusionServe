@@ -1,0 +1,106 @@
+# FusionServe stacks.
+#   --profile mock : gateway + mock Triton + mock Dynamo (no GPU, CI-friendly)
+#   --profile gpu  : gateway + real Triton + Dynamo frontend + vLLM (needs NVIDIA GPU)
+#
+# Versions are pinned intentionally. Recheck the Triton/Dynamo support matrix
+# before running real benchmarks (see docs/benchmarking.md).
+
+services:
+  gateway:
+    build:
+      context: ./gateway-rs
+      dockerfile: ../deploy/docker/gateway.Dockerfile
+    image: fusionserve/gateway:dev
+    ports:
+      - "8080:8080"   # HTTP API + /metrics
+    environment:
+      FUSIONSERVE_CONFIG: /etc/fusionserve/config.yaml
+      RUST_LOG: info
+    volumes:
+      - ./gateway-rs/config.yaml:/etc/fusionserve/config.yaml:ro
+    depends_on:
+      - mock-triton
+      - mock-dynamo
+    profiles: ["mock"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/readyz"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+
+  mock-triton:
+    build:
+      context: .
+      dockerfile: deploy/docker/mock.Dockerfile
+    command: ["python3", "tests/mocks/mock_triton.py", "--port", "8001"]
+    ports:
+      - "8001:8001"
+    profiles: ["mock"]
+
+  mock-dynamo:
+    build:
+      context: .
+      dockerfile: deploy/docker/mock.Dockerfile
+    command: ["python3", "tests/mocks/mock_dynamo.py", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    profiles: ["mock"]
+
+  # ---- GPU profile (illustrative; pin exact tags before benchmarking) -------
+  triton:
+    image: nvcr.io/nvidia/tritonserver:26.06-py3
+    command: ["tritonserver", "--model-repository=/models"]
+    volumes:
+      - ./models/triton:/models:ro
+    ports:
+      - "8001:8001"   # gRPC
+      - "8002:8002"   # metrics
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]
+    profiles: ["gpu"]
+
+  dynamo-frontend:
+    image: nvcr.io/nvidia/ai-dynamo/dynamo:1.2.1
+    # Frontend + router; vLLM workers register with it. See docs/deployment.md.
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]
+    profiles: ["gpu"]
+
+  gateway-gpu:
+    extends:
+      service: gateway
+    depends_on:
+      - triton
+      - dynamo-frontend
+    profiles: ["gpu"]
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./deploy/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    profiles: ["mock", "gpu"]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    profiles: ["mock", "gpu"]
