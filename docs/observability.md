@@ -19,3 +19,8 @@ open http://localhost:3000
 The GPU profile adds the pinned NVIDIA DCGM Exporter. GPU panels remain empty in
 CPU/mock mode; no screenshot is included because this machine has no NVIDIA GPU
 and fake dashboard data would be misleading.
+
+The current validation confirmed metric exposition and bounded backend/model
+labels with mock traffic. DCGM, GPU utilization/memory/temperature/power, and a
+real-traffic dashboard screenshot remain NR; no placeholder screenshot is
+published. See the [GPU validation report](gpu-validation-report.md).

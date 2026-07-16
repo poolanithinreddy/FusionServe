@@ -1,7 +1,8 @@
 # Deployment
 
-Two stacks: the **mock** stack (no GPU, for development/CI) and the **GPU** stack
-(real Triton + Dynamo + vLLM).
+Two stacks are configured: the **mock** stack (no GPU, validated for
+development/CI) and the **GPU** stack (intended for Triton + Dynamo + vLLM;
+runtime validation remains NR on this host).
 
 ## Mock stack (no GPU)
 
@@ -41,11 +42,10 @@ Prerequisites: NVIDIA GPU, recent driver, [NVIDIA Container Toolkit], Docker.
 
 ### Version pinning
 
-Pin exact image tags before benchmarking — do not use `latest`. As referenced in
-the project brief, Dynamo's repo showed release `1.2.1` and Triton's example used
-the `26.06` line; **recheck the support matrix** for compatible Triton / Dynamo /
-vLLM / CUDA / driver versions before a final run. Record the versions you used in
-the benchmark environment block.
+Pin exact image tags before benchmarking—never use `latest`. The dedicated
+workflows currently pin Triton `26.04` and Dynamo's vLLM runtime `1.2.0`.
+Recheck NVIDIA's support matrices against the target driver before a real run,
+and record any justified pin change in the benchmark environment.
 
 ## Dynamo topology
 

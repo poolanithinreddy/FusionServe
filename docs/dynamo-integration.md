@@ -2,6 +2,7 @@
 
 Status on the recorded environment: **NOT RUN**. No NVIDIA GPU, driver, CUDA
 runtime, or active Docker daemon was available.
+This remains NR in the [GPU validation report](gpu-validation-report.md).
 
 The reproduction workflow pins `nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.2.0`
 and the public `Qwen/Qwen3-0.6B` model. It starts Dynamo's OpenAI-compatible

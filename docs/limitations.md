@@ -7,12 +7,11 @@ traced to evidence. States follow the project's convention:
 ## What is VERIFIED (reproducible in this repo, no GPU)
 
 - **Gateway builds cleanly**: `cargo build`, `cargo clippy -D warnings`. VERIFIED.
-- **Unit + integration tests pass**: 11 unit tests (circuit breaker, backpressure,
-  classifier) + 9 gateway integration tests (error model, discovery, admission
-  pre-checks, admin, metrics). VERIFIED — `cargo test`.
+- **Unit + integration tests pass**: 28 unit tests + 17 gateway API/in-process
+  backend tests. VERIFIED — `cargo test`.
 - **End-to-end request path** through the real binary + mock backends: non-LLM →
   Triton path, LLM unary + **streaming** → Dynamo path, request-id propagation,
-  error contract. VERIFIED — `pytest tests/integration/test_end_to_end.py` (6/6).
+  error contract. VERIFIED — `pytest tests/integration/test_end_to_end.py`.
 - **Python client** drives all paths against the live stack. VERIFIED.
 - **C++ client** compiles + links (clang++ + libcurl) and runs end-to-end against
   the live stack (classify, unary chat, streaming). VERIFIED in this environment.
@@ -28,14 +27,14 @@ traced to evidence. States follow the project's convention:
 - **Real Triton / Dynamo / vLLM integration.** The clients speak the correct
   protocols (KServe v2, OpenAI-compatible) and are verified against mocks, but
   have **not** been run against the real servers in this environment. UNVERIFIED.
-- **All performance numbers.** No throughput/latency/TTFT/GPU numbers are
-  published; `docs/benchmark-results.md` is intentionally empty until measured on
-  hardware with a full environment record. UNVERIFIED.
+- **GPU performance.** The retained CPU/mock observations validate only the
+  harness and gateway path. Triton, Dynamo/vLLM, token throughput, TTFT, and GPU
+  performance remain UNVERIFIED on real hardware.
 - **TensorRT engine build** (`build_tensorrt_engine.sh`) — needs `trtexec` + GPU.
 - **Kubernetes manifests** — authored and YAML-valid, but not applied to a live
   cluster here. UNVERIFIED at runtime.
-- **Model download URLs** — the ResNet-50 ONNX URL is a best-effort default;
-  `text_embedding` requires you to export/point at a model. Verify before use.
+- **Model artifacts** — ResNet-50 download is checksum-pinned, but model loading
+  remains NR here; `text_embedding` still requires an exported model.
 
 ## Scope / wording discipline (claims NOT made)
 

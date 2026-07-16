@@ -13,21 +13,23 @@ bash tests/failure/run_failure_suite.sh
 | Scenario | Injection | Expected | Verified |
 |----------|-----------|----------|----------|
 | Triton unavailable | kill mock Triton | non-LLM returns 503 fast; circuit breaker opens; **LLM traffic unaffected** | ✅ (`infer codes: 503×6`, `chat: 200`) |
-| Queue saturation | 40 concurrent calls, `max_concurrency=1`, slow backend | most requests shed with **429**; gateway stays alive | ✅ (`{429: 39, 200: 1}`, alive) |
-| Slow backend | 800 ms backend latency, 1 s model timeout | single request **bounded** (~0.8 s), never hangs | ✅ (`elapsed=828ms`) |
+| Queue saturation | 40 concurrent calls, `max_concurrency=1`, slow backend | most requests shed with **503**; gateway stays alive | ✅ (`{503: 39, 200: 1}`, alive) |
+| Slow backend | 800 ms backend latency, 1 s model timeout | single request **bounded** (~0.8 s), never hangs | ✅ (`elapsed=827ms`) |
+| Dynamo unavailable | kill mock Dynamo | chat returns 503; non-LLM remains healthy | ✅ (`chat: 503`, `infer: 200`) |
 
 These results were observed on the mock stack in this repo's environment; rerun
 the suite to reproduce. The numbers above are illustrative of behavior, not
 performance benchmarks.
 
-## Additional scenarios (documented; run on the GPU stack)
+## Additional mock scenarios
 
-- **Dynamo worker unavailable** — kill one vLLM worker; Dynamo removes it from
-  rotation; measure error spike and recovery. Use `tests/failure/kill_dynamo_worker.sh`.
 - **Malformed backend response** — set `MOCK_MALFORMED=1` on mock Triton; the
   gateway returns `upstream_malformed` (502), does not crash.
 - **Client cancellation** — disconnect mid-stream; the handler future is dropped,
   releasing the admission permit and cancelling the upstream `reqwest` call.
+
+Equivalent experiments against real Triton, the Dynamo frontend, and a vLLM
+worker remain NR because this host has no NVIDIA GPU or active container daemon.
 
 ## Helper scripts
 

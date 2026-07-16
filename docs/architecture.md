@@ -1,5 +1,10 @@
 # Architecture
 
+Runtime validation currently covers the Rust gateway with deterministic mock
+backends. The Triton and Dynamo components shown below are integration targets,
+not evidence of a completed NVIDIA hardware run; see the
+[validation report](validation-report.md).
+
 FusionServe is a single Rust gateway in front of two inference engines. The
 gateway owns cross-cutting reliability and observability; the engines own model
 execution. This document describes the components and the request lifecycle.

@@ -13,3 +13,5 @@ are in [`artifacts/fault-injection/cpu-mock-validation.md`](../artifacts/fault-i
 
 These deterministic experiments validate gateway policy. Real component
 detection and recovery times must be measured again on the NVIDIA deployment.
+Real-backend fault injection is NR because neither Triton nor Dynamo/vLLM could
+start on the CPU-only host; no mock timing is presented as real-backend evidence.

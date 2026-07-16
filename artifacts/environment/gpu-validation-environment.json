@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "test_date": "2026-07-15",
+  "git_commit": "f28e241c70b73bd3f7b2c9b867d8a5d3efd4cba3",
+  "classification": "cpu_only",
+  "os": {
+    "name": "macOS",
+    "version": "26.5.1",
+    "kernel": "Darwin 25.5.0",
+    "architecture": "arm64"
+  },
+  "cpu": {
+    "model": "Apple M4",
+    "physical_cores": 10,
+    "logical_cores": 10
+  },
+  "memory_bytes": 17179869184,
+  "disk_available_bytes_approx": 246960619520,
+  "gpu": {
+    "count": 0,
+    "nvidia_smi_available": false,
+    "cuda_compiler_available": false,
+    "driver": null,
+    "cuda": null
+  },
+  "container_runtime": {
+    "docker_client": "28.1.1",
+    "compose": "2.35.1-desktop.1",
+    "daemon_available": false,
+    "nvidia_container_toolkit_verified": false
+  },
+  "toolchain": {
+    "rustc": "1.94.1",
+    "cargo": "1.94.1",
+    "python": "3.9.6",
+    "cmake": "4.4.0",
+    "shellcheck": "0.11.0"
+  },
+  "gpu_validation_status": "blocked_no_nvidia_gpu"
+}

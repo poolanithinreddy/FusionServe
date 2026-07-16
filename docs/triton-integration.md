@@ -2,6 +2,7 @@
 
 Status on the recorded environment: **NOT RUN**. The host is Apple Silicon with
 no NVIDIA GPU and Docker Desktop's daemon was unavailable.
+This remains NR in the [GPU validation report](gpu-validation-report.md).
 
 The workflow pins NVIDIA Triton `26.04`, matching the official server release
 examples, and downloads ONNX Model Zoo ResNet-50 v2 with SHA-256 verification.

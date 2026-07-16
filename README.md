@@ -120,7 +120,6 @@ make gpu-up                               # docker-compose with GPU profile
 | [benchmarks/](benchmarks/) | Benchmark harness + report generator |
 | [deploy/](deploy/) | Docker + Kubernetes manifests |
 | [docs/](docs/) | Architecture, API, deployment, benchmarking, limitations |
-| [.claude/](.claude/) | Feature-reference notes used while building this project |
 
 ## Implementation status
 
@@ -146,6 +145,7 @@ component or GPU execution.
 | Real Dynamo + vLLM | **NOT RUN** — no NVIDIA GPU; Docker daemon unavailable |
 | Single-GPU | **NOT RUN** |
 | Multi-GPU / multi-worker | **NOT RUN** |
+| Multi-node | **NOT RUN** |
 
 See [docs/limitations.md](docs/limitations.md) for exactly what has and has not
 been verified. No GPU-performance numbers are published without a measured run
@@ -186,6 +186,10 @@ scripts/dynamo/smoke_direct.sh
 See [Triton integration](docs/triton-integration.md),
 [Dynamo/vLLM integration](docs/dynamo-integration.md), and the
 [validation report](docs/validation-report.md) before running these workflows.
+The current hardware gate and complete NR matrix are in the
+[GPU validation report](docs/gpu-validation-report.md). Benchmark publication
+rules are documented in [benchmark methodology](docs/benchmark-methodology.md)
+and [reproducibility](docs/reproducibility.md).
 
 ## Development
 
